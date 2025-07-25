@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[10]:
+# In[ ]:
 
 
 import torch
@@ -9,15 +9,62 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
 import numpy as np
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Sampler
 import itertools
 import os
 from PIL import Image
 from torchvision import transforms
+import random
+from collections import defaultdict
 
 
-# In[11]:
+# In[ ]:
 
+
+class PKSampler(Sampler):
+    """
+    PK Sampler for Person Re-ID: P persons × K images per person
+    """
+    def __init__(self, data_source, P=16, K=4):
+        self.data_source = data_source
+        self.P = P  # Number of persons per batch
+        self.K = K  # Number of images per person
+        
+        # Group samples by person ID
+        self.pid_to_indices = defaultdict(list)
+        for idx, (_, pid) in enumerate(data_source.samples):
+            self.pid_to_indices[pid].append(idx)
+        
+        # Filter out persons with less than K images
+        self.valid_pids = [pid for pid, indices in self.pid_to_indices.items() 
+                          if len(indices) >= self.K]
+        
+        if len(self.valid_pids) < self.P:
+            raise ValueError(f"Not enough persons with at least {self.K} images. "
+                           f"Found {len(self.valid_pids)}, need {self.P}")
+    
+    def __iter__(self):
+        # Calculate number of batches
+        num_batches = len(self.valid_pids) // self.P
+        
+        for _ in range(num_batches):
+            # Randomly select P persons
+            selected_pids = random.sample(self.valid_pids, self.P)
+            
+            batch_indices = []
+            for pid in selected_pids:
+                # Randomly select K images for this person
+                available_indices = self.pid_to_indices[pid]
+                selected_indices = random.sample(available_indices, 
+                                               min(self.K, len(available_indices)))
+                batch_indices.extend(selected_indices)
+            
+            # Shuffle within batch to avoid ordering bias
+            random.shuffle(batch_indices)
+            yield batch_indices
+    
+    def __len__(self):
+        return len(self.valid_pids) // self.P
 
 class PersonReIDTrainDataset(torch.utils.data.Dataset):
     """
@@ -85,7 +132,7 @@ class PersonReIDTestDataset(torch.utils.data.Dataset):
         return img, label, cam_id
 
 
-# In[12]:
+# In[3]:
 
 
 # =========================
@@ -117,7 +164,7 @@ class PersonReIDModel(nn.Module):
         return features, logits
 
 
-# In[13]:
+# In[4]:
 
 
 # =========================
@@ -160,7 +207,7 @@ class FIDILoss(nn.Module):
         return kl_div
 
 
-# In[14]:
+# In[5]:
 
 
 # =========================
@@ -317,14 +364,17 @@ class FIDITrainer:
         print(f'\nTraining completed. Best mAP: {best_mAP:.4f}')
 
 
-# In[15]:
+# In[ ]:
 
 
 # =========================
 # 6. Tune-able Parameters / Config
 # =========================
-# Place this cell at the top of your notebook to easily adjust parameters
-batch_size = 128
+# PK Sampling parameters
+P = 16  # Number of persons per batch
+K = 4   # Number of images per person
+batch_size = P * K  # This will be 64 for optimal PK sampling
+
 num_epochs = 120
 device = [0, 1] if torch.cuda.device_count() > 1 else ('cuda' if torch.cuda.is_available() else 'cpu')
 alpha = 1.05
@@ -340,7 +390,7 @@ query_dir = os.path.join('Dataset', 'query')
 gallery_dir = os.path.join('Dataset', 'gallery')
 
 
-# In[16]:
+# In[ ]:
 
 
 # =========================
@@ -357,13 +407,24 @@ test_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ])
+
 train_dataset = PersonReIDTrainDataset(train_dir, transform=train_transform)
 query_dataset = PersonReIDTestDataset(query_dir, transform=test_transform)
 gallery_dataset = PersonReIDTestDataset(gallery_dir, transform=test_transform)
 num_classes = len(train_dataset.label_map)
+
+# Create PK sampler for training
+pk_sampler = PKSampler(train_dataset, P=P, K=K)
+
+# Use PK sampler instead of random sampling
 train_loader = DataLoader(
-    train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, drop_last=True, pin_memory=True, prefetch_factor=prefetch_factor
+    train_dataset, 
+    batch_sampler=pk_sampler,  # Using batch_sampler instead of batch_size
+    num_workers=num_workers, 
+    pin_memory=True, 
+    prefetch_factor=prefetch_factor
 )
+
 query_loader = DataLoader(
     query_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, prefetch_factor=prefetch_factor
 )
@@ -371,8 +432,12 @@ gallery_loader = DataLoader(
     gallery_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, prefetch_factor=prefetch_factor
 )
 
+print(f"Training with PK sampling: P={P} persons, K={K} images per person")
+print(f"Effective batch size: {P*K}")
+print(f"Number of training batches per epoch: {len(pk_sampler)}")
 
-# In[17]:
+
+# In[8]:
 
 
 # =========================
