@@ -17,6 +17,7 @@
 
 ### Changes Made
 - **Created project_log.md** - Initial log file to track all project changes
+- **Analyzed train.py** - Comprehensive training script with advanced features
 
 ### Project Analysis
 Based on examining the code files, this is a **Person Re-Identification (Re-ID) project** with the following components:
@@ -60,6 +61,36 @@ Based on examining the code files, this is a **Person Re-Identification (Re-ID) 
 6. **Model Checkpoints**:
    - IUST_checkpoint_epoch_50.pt (99MB)
    - Market_1501_checkpoint_epoch_50_82.pt (96MB)
+
+7. **train.py - Advanced Training Script**:
+   - **PK Sampler**: Implements P×K sampling strategy (P=16 persons, K=4 images per person)
+   - **Batch Size**: 64 (16×4) for optimal Person Re-ID training
+   - **Advanced Features**:
+     - Custom `PKSampler` class for balanced person sampling
+     - FIDI (Fine-grained Difference-aware) loss function
+     - Combined loss: FIDI + CrossEntropy
+     - Multi-GPU support with DataParallel
+     - Live plotting with matplotlib during training
+     - Automatic TorchScript model export every 5 epochs
+     - ONNX export for model visualization
+   - **Training Configuration**:
+     - Learning rate: 3.5e-4 with StepLR scheduler (step_size=40, gamma=0.1)
+     - Weight decay: 5e-4
+     - FIDI parameters: alpha=1.05, beta=0.5
+     - Image size: 256×128
+     - Evaluation frequency: every 10 epochs
+   - **Data Augmentation**:
+     - Random horizontal flip for training
+     - ImageNet normalization
+     - Resize to 256×128
+   - **Evaluation Metrics**:
+     - CMC (Cumulative Matching Characteristic) curves
+     - mAP (mean Average Precision)
+     - Rank-1, Rank-5, Rank-10 accuracy
+   - **Model Export**:
+     - ONNX format for Netron visualization
+     - TorchScript format for deployment
+     - Best model checkpoint based on mAP
 
 ---
 *This log will be updated with each file modification during this session.* 
