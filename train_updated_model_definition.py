@@ -16,6 +16,7 @@ from PIL import Image
 from torchvision import transforms
 import random
 from collections import defaultdict
+DEVICE_IDS = [0, 1]
 
 # Memory optimization settings
 torch.backends.cudnn.benchmark = True
@@ -645,25 +646,7 @@ class SOLIDERFIDITrainer:
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
             self.is_parallel = True
             
-            print(f"✓ DataParallel initialized with devices: {device}")
-            print(f"✓ Model distributed across {len(device)} GPUs")
-            print(f"✓ GPU 0 memory after distribution: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
-            print(f"✓ GPU 1 memory after distribution: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
-            
-            # Verify distribution
-            check_gpu_distribution(self.model)
-            
-            # CRITICAL: Force DataParallel to distribute by doing a test forward pass
-            print(f"✓ Forcing DataParallel distribution with test forward pass...")
-            try:
-                test_input = torch.randn(2, 3, 256, 128, device=self.device)  # Small test batch
-                with torch.no_grad():
-                    _ = self.model(test_input)
-                print(f"✓ DataParallel distribution test successful")
-                verify_gpu_utilization()
-            except Exception as e:
-                print(f"⚠️  DataParallel distribution test failed: {e}")
-                print(f"  - This may indicate GPU distribution issues!")
+            print(f"DataParallel initialized with devices: {device}")
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -689,15 +672,7 @@ class SOLIDERFIDITrainer:
         self.best_mAP = 0.0
         self.stage_switch_epoch = 100  # Switch to SOLIDER stage after this epoch
         
-        # Verify model is properly initialized
-        if self.is_parallel:
-            try:
-                test_input = torch.randn(1, 3, 256, 128, device=self.device)
-                with torch.no_grad():
-                    _ = self.model(test_input)
-                print(f"✓ SOLIDERFIDITrainer model verification successful")
-            except Exception as e:
-                print(f"⚠️  SOLIDERFIDITrainer model verification failed: {e}")
+
     
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
@@ -923,9 +898,8 @@ class SOLIDERFIDITrainer:
                       f'CE={batch_ce:.6f}×{cls_weight:.2f}, '
                       f'Semantic={batch_semantic:.6f}×{self.semantic_weight:.2f}, '
                       f'Lambda={current_lambda:.1f}')
-                if batch_idx % 20 == 0:  # Print memory and GPU utilization every 20 batches
-                    print_gpu_memory()
-                    verify_gpu_utilization()
+            if batch_idx % 20 == 0:  # Print memory every 20 batches
+                print_gpu_memory()
         
         # Calculate averages
         num_batches = len(dataloader)
@@ -1278,7 +1252,7 @@ class FIDITrainer:
             self.optimizer.step()
             
             # Clear cache to prevent memory buildup
-            if batch_idx % 5 == 0:  # Clear every 5 batches
+            if batch_idx % 20 == 0:  # Clear every 5 batches
                 torch.cuda.empty_cache()
             
             # Store all batch values
@@ -1464,12 +1438,11 @@ class FIDITrainer:
 # 6. Tune-able Parameters / Config
 # =========================
 
-# CRITICAL: Set PyTorch memory allocation to prevent fragmentation
+# Set PyTorch memory allocation to prevent fragmentation
 import os
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-print("✓ Set PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to prevent memory fragmentation")
 # PK Sampling parameters - Optimized for dual GPU
-P = 8   # Number of persons per batch (reduced from 16)
+P = 16   # Number of persons per batch (reduced from 16)
 K = 8   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling with dual GPU
 
@@ -1477,12 +1450,12 @@ num_epochs = 200
 # Optimize for dual GPU setup
 if torch.cuda.device_count() >= 2:
     device = [0, 1]
-    num_workers = 16  # More workers for dual GPU
-    prefetch_factor = 8  # Higher prefetch for better throughput
+    num_workers = 4  # Reduced workers for stability
+    prefetch_factor = 2  # Reduced prefetch for stability
 else:
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    num_workers = 8
-    prefetch_factor = 4
+    num_workers = 4
+    prefetch_factor = 2
 
 alpha = 1.05
 beta = 0.5
@@ -1529,63 +1502,29 @@ pk_sampler = PKSampler(train_dataset, P=P, K=K)
 
 # Optimize batch sizes for dual GPU
 if isinstance(device, (list, tuple)) and len(device) >= 2:
-    # Increase batch size for dual GPU to maximize utilization
-    effective_batch_size = P * K * len(device)  # 128 * 2 = 256
-    print(f"✓ Dual GPU detected, using effective batch size: {effective_batch_size}")
+    effective_batch_size = P * K * len(device)
 else:
-    effective_batch_size = P * K  # 128
-    print(f"✓ Single device, using batch size: {effective_batch_size}")
+    effective_batch_size = P * K
 
 # Always use PK sampling
 train_loader = DataLoader(
     train_dataset,
     sampler=pk_sampler,
-    batch_size=P*K,  # 64 - DataParallel will split this across 2 GPUs (32 per GPU)
+    batch_size=P*K,
     num_workers=num_workers,
-    pin_memory=True,
+    pin_memory=False,  # Disabled to prevent CUDA illegal memory access
     prefetch_factor=prefetch_factor,
     drop_last=True
 )
 
-# Verify DataParallel will work with our batch size
-if isinstance(device, (list, tuple)) and len(device) >= 2:
-    print(f"✓ DataParallel batch distribution:")
-    print(f"  - Input batch size: {P*K}")
-    print(f"  - Effective batch size per GPU: {P*K // len(device)}")
-    print(f"  - Total effective batch size: {P*K * len(device)}")
-    if P*K % len(device) != 0:
-        print(f"⚠️  WARNING: Batch size {P*K} is not evenly divisible by {len(device)} GPUs!")
-        print(f"   This may cause uneven GPU utilization.")
-        # Suggest a better batch size
-        suggested_batch = ((P*K // len(device)) + 1) * len(device)
-        print(f"   Suggested batch size: {suggested_batch} (P={suggested_batch//K}, K={K})")
-    else:
-        print(f"  ✓ Batch size is evenly divisible across {len(device)} GPUs")
-    
-    # CRITICAL: Verify DataParallel is actually working
-    print(f"✓ Testing DataParallel batch splitting...")
-    try:
-        test_batch = torch.randn(P*K, 3, image_height, image_width, device=f"cuda:{device[0]}")
-        print(f"  - Test batch shape: {test_batch.shape}")
-        print(f"  - Expected split: {P*K // len(device)} samples per GPU")
-        
-        # This should trigger DataParallel to split the batch
-        with torch.no_grad():
-            _ = trainer.model(test_batch)
-        
-        print(f"  ✓ DataParallel batch splitting test successful")
-        verify_gpu_utilization()
-        
-    except Exception as e:
-        print(f"  ⚠️  DataParallel batch splitting test failed: {e}")
-        print(f"  - This indicates a serious issue with GPU distribution!")
+
 
 query_loader = DataLoader(
     query_dataset,
     batch_size=P*K,
     shuffle=False,
     num_workers=num_workers,
-    pin_memory=True,
+    pin_memory=False,  # Disabled to prevent CUDA illegal memory access
     prefetch_factor=prefetch_factor
 )
 
@@ -1594,12 +1533,12 @@ gallery_loader = DataLoader(
     batch_size=P*K,
     shuffle=False,
     num_workers=num_workers,
-    pin_memory=True,
+    pin_memory=False,  # Disabled to prevent CUDA illegal memory access
     prefetch_factor=prefetch_factor
 )
 
-print(f"✓ Train samples: {len(train_dataset)}, PIDs: {num_classes}")
-print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
+print(f"Train samples: {len(train_dataset)}, PIDs: {num_classes}")
+print(f"DataLoaders ready: train {len(train_loader)} batches, "
       f"query {len(query_loader)}, gallery {len(gallery_loader)}")
 
 
@@ -1610,21 +1549,6 @@ print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
 
 # Model
 model = SOLIDERPersonReIDModel(num_classes=num_classes)
-
-# Optimize model placement for dual GPU
-if isinstance(device, (list, tuple)) and len(device) >= 2:
-    # Clear GPU memory and place model on first GPU for proper DataParallel distribution
-    torch.cuda.empty_cache()
-    model = model.to(f"cuda:{device[0]}")
-    print(f"✓ Model placed on GPU {device[0]}, DataParallel will distribute to {device}")
-    
-    # Verify GPU memory allocation
-    print(f"✓ GPU 0 memory before DataParallel: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
-    if torch.cuda.device_count() > 1:
-        print(f"✓ GPU 1 memory before DataParallel: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
-else:
-    model = model.to(device)
-    print(f"✓ Model placed on device: {device}")
 
 # Trainer
 trainer = SOLIDERFIDITrainer(
@@ -1642,68 +1566,8 @@ trainer = SOLIDERFIDITrainer(
 # Enforce SOLIDER stage from epoch 0
 trainer.stage_switch_epoch = 0
 
-# Verify DataParallel setup
-if isinstance(device, (list, tuple)) and len(device) >= 2:
-    print(f"✓ DataParallel verification:")
-    print(f"  - Model device_ids: {trainer.model.device_ids}")
-    print(f"  - Model output_device: {trainer.model.output_device}")
-    print(f"  - GPU 0 memory after DataParallel: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
-    print(f"  - GPU 1 memory after DataParallel: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
-    
-    # Simple test to verify DataParallel setup
-    print(f"✓ Testing DataParallel setup...")
-    try:
-        # Just test if the model can be accessed on both devices
-        model_module = trainer.model.module if hasattr(trainer.model, 'module') else trainer.model
-        print(f"  - Model type: {type(model_module).__name__}")
-        print(f"  - DataParallel wrapper: {type(trainer.model).__name__}")
-        print(f"  - Number of replicas: {len(trainer.model.device_ids)}")
-        
-        # Check if model parameters are distributed
-        total_params = sum(p.numel() for p in trainer.model.parameters())
-        print(f"  - Total parameters: {total_params:,}")
-        
-        # Test a simple tensor operation on both GPUs
-        test_tensor = torch.randn(10, 10, device=f"cuda:{device[0]}")
-        test_tensor2 = torch.randn(10, 10, device=f"cuda:{device[1]}")
-        result = torch.mm(test_tensor, test_tensor2.t())
-        print(f"  - Cross-GPU tensor operation successful")
-        
-        print(f"  ✓ DataParallel setup verified!")
-        
-        # Check GPU distribution
-        check_gpu_distribution(trainer.model)
-        
-    except Exception as e:
-        print(f"  ⚠️  DataParallel test failed: {str(e)}")
-        print(f"  - Continuing with training...")
-    
-    # Test forward pass to ensure distribution (optional)
-    print(f"✓ Testing DataParallel forward pass...")
-    try:
-        # Use a proper batch size that matches our training setup
-        test_input = torch.randn(P*K, 3, image_height, image_width, device=f"cuda:{device[0]}")
-        with torch.no_grad():
-            test_output = trainer.model(test_input)
-        print(f"  - Test input shape: {test_input.shape}")
-        print(f"  - Test output shape: {test_output[0].shape if isinstance(test_output, tuple) else test_output.shape}")
-        print(f"  - GPU 0 memory after test: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
-        print(f"  - GPU 1 memory after test: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
-        
-        # Check if both GPUs are being used
-        gpu0_mem = torch.cuda.memory_allocated(0) / 1e9
-        gpu1_mem = torch.cuda.memory_allocated(1) / 1e9
-        if gpu1_mem > 0.1:  # More than 100MB on GPU1
-            print(f"  ✓ Both GPUs are being utilized!")
-        else:
-            print(f"  ⚠️  GPU1 appears underutilized (memory: {gpu1_mem:.2f}GB)")
-            
-    except Exception as e:
-        print(f"  ⚠️  Test forward pass failed: {str(e)}")
-        print(f"  - This is normal for complex models, continuing with training...")
-
-print(f"✓ SOLIDER model with {num_classes} classes")
-print(f"✓ Trainer initialized – SOLIDER stage from epoch 0 onwards")
+print(f"SOLIDER model with {num_classes} classes")
+print(f"Trainer initialized – SOLIDER stage from epoch 0 onwards")
 print(f"Using device(s): {device}")
 
 
