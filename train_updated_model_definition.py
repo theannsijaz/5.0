@@ -591,9 +591,9 @@ class SOLIDERFIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
             
-            # Place model on CPU first, then use DataParallel
+            # Place model on the first GPU, then use DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.cpu()  # Start on CPU to avoid device conflicts
+            model = model.to(self.device)  # Move to first GPU first
             
             # Use DataParallel with specified device IDs
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
@@ -625,6 +625,16 @@ class SOLIDERFIDITrainer:
         self.loss_history = {'fidi': [], 'ce': [], 'semantic': []}
         self.best_mAP = 0.0
         self.stage_switch_epoch = 100  # Switch to SOLIDER stage after this epoch
+        
+        # Verify model is properly initialized
+        if self.is_parallel:
+            try:
+                test_input = torch.randn(1, 3, 256, 128, device=self.device)
+                with torch.no_grad():
+                    _ = self.model(test_input)
+                print(f"✓ SOLIDERFIDITrainer model verification successful")
+            except Exception as e:
+                print(f"⚠️  SOLIDERFIDITrainer model verification failed: {e}")
     
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
@@ -1063,9 +1073,9 @@ class FIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
             
-            # Place model on CPU first, then use DataParallel
+            # Place model on the first GPU, then use DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.cpu()  # Start on CPU to avoid device conflicts
+            model = model.to(self.device)  # Move to first GPU first
             
             # Use DataParallel with specified device IDs
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
@@ -1095,6 +1105,16 @@ class FIDITrainer:
         # For adaptive strategy
         self.loss_history = {'fidi': [], 'ce': []}
         self.best_mAP = 0.0
+        
+        # Verify model is properly initialized
+        if hasattr(self, 'is_parallel') and self.is_parallel:
+            try:
+                test_input = torch.randn(1, 3, 256, 128, device=self.device)
+                with torch.no_grad():
+                    _ = self.model(test_input)
+                print(f"✓ FIDITrainer model verification successful")
+            except Exception as e:
+                print(f"⚠️  FIDITrainer model verification failed: {e}")
     
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
