@@ -1329,10 +1329,10 @@ class FIDITrainer:
 # =========================
 # PK Sampling parameters
 P = 16  # Number of persons per batch
-K = 4   # Number of images per person
+K = 8   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling
 
-num_epochs = 250
+num_epochs = 200
 # Optimize for dual GPU setup
 if torch.cuda.device_count() >= 2:
     device = [0, 1]
