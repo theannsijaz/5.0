@@ -1801,26 +1801,7 @@ def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic
     else:
         return loss_filename, None
 
-def monitor_gpu_usage(device):
-    """Monitor GPU usage for multi-GPU setup."""
-    if isinstance(device, (list, tuple)) and len(device) >= 2:
-        gpu_info = []
-        for gpu_id in device:
-            memory_allocated = torch.cuda.memory_allocated(gpu_id) / 1e9
-            memory_reserved = torch.cuda.memory_reserved(gpu_id) / 1e9
-            memory_total = torch.cuda.get_device_properties(gpu_id).total_memory / 1e9
-            utilization = torch.cuda.utilization(gpu_id) if hasattr(torch.cuda, 'utilization') else 0
-            
-            gpu_info.append({
-                'id': gpu_id,
-                'memory_allocated': memory_allocated,
-                'memory_reserved': memory_reserved,
-                'memory_total': memory_total,
-                'utilization': utilization
-            })
-        
-        return gpu_info
-    return None
+
 
 
 # =========================
@@ -1961,20 +1942,9 @@ if __name__ == "__main__":
             if acc_file:
                 log_print(f"Accuracy plot updated: {acc_file}")
             
-            # Log learning rate and GPU memory usage
+            # Log learning rate
             current_lr = trainer.optimizer.param_groups[0]['lr']
             log_print(f"Current Learning Rate: {current_lr:.6f}")
-            
-            # Log GPU memory usage for dual GPU setup
-            if isinstance(device, (list, tuple)) and len(device) >= 2:
-                gpu_info = monitor_gpu_usage(device)
-                if gpu_info:
-                    for gpu in gpu_info:
-                        log_print(f"GPU{gpu['id']}: {gpu['memory_allocated']:.2f}GB/{gpu['memory_total']:.1f}GB ({gpu['utilization']}%)")
-                    
-                    # Check if both GPUs are being used
-                    if gpu_info[1]['memory_allocated'] < 0.1:  # Less than 100MB on GPU1
-                        log_print(f"⚠️  WARNING: GPU1 appears to be underutilized! Memory: {gpu_info[1]['memory_allocated']:.2f}GB")
 
             trainer.scheduler.step()
 
