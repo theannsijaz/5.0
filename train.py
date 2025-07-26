@@ -244,6 +244,10 @@ class FIDITrainer:
         total_loss = 0.0
         total_fidi_loss = 0.0
         total_ce_loss = 0.0
+        batch_losses = []
+        batch_fidi_losses = []
+        batch_ce_losses = []
+        
         for batch_idx, (images, labels) in enumerate(dataloader):
             images = images.to(self.device)
             labels = labels.to(self.device)
@@ -254,16 +258,38 @@ class FIDITrainer:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            total_loss += loss.item()
-            total_fidi_loss += fidi_loss.item()
-            total_ce_loss += ce_loss.item()
+            
+            # Store all batch values
+            batch_loss = loss.item()
+            batch_fidi = fidi_loss.item()
+            batch_ce = ce_loss.item()
+            
+            total_loss += batch_loss
+            total_fidi_loss += batch_fidi
+            total_ce_loss += batch_ce
+            
+            batch_losses.append(batch_loss)
+            batch_fidi_losses.append(batch_fidi)
+            batch_ce_losses.append(batch_ce)
+            
             if batch_idx % 50 == 0:
-                print(f'Batch {batch_idx}: Loss={loss.item():.4f}, '
-                      f'FIDI={fidi_loss.item():.4f}, CE={ce_loss.item():.4f}')
+                print(f'Batch {batch_idx}: Loss={batch_loss:.6f}, '
+                      f'FIDI={batch_fidi:.6f}, CE={batch_ce:.6f}')
+        
         avg_loss = total_loss / len(dataloader)
         avg_fidi_loss = total_fidi_loss / len(dataloader)
         avg_ce_loss = total_ce_loss / len(dataloader)
-        return avg_loss, avg_fidi_loss, avg_ce_loss
+        
+        # Calculate additional statistics
+        min_loss = min(batch_losses)
+        max_loss = max(batch_losses)
+        std_loss = np.std(batch_losses)
+        
+        print(f'Epoch Summary: Avg Loss={avg_loss:.6f}, Min={min_loss:.6f}, Max={max_loss:.6f}, Std={std_loss:.6f}')
+        print(f'FIDI: Avg={avg_fidi_loss:.6f}, Min={min(batch_fidi_losses):.6f}, Max={max(batch_fidi_losses):.6f}')
+        print(f'CE: Avg={avg_ce_loss:.6f}, Min={min(batch_ce_losses):.6f}, Max={max(batch_ce_losses):.6f}')
+        
+        return avg_loss, avg_fidi_loss, avg_ce_loss, batch_losses, batch_fidi_losses, batch_ce_losses
     def evaluate(self, query_dataloader, gallery_dataloader):
         self.model.eval()
         query_features = []
@@ -342,7 +368,7 @@ class FIDITrainer:
         for epoch in range(num_epochs):
             print(f'\nEpoch {epoch+1}/{num_epochs}')
             print('-' * 50)
-            avg_loss, avg_fidi_loss, avg_ce_loss = self.train_epoch(train_dataloader)
+            avg_loss, avg_fidi_loss, avg_ce_loss, batch_losses, batch_fidi_losses, batch_ce_losses = self.train_epoch(train_dataloader)
             print(f'Train Loss: {avg_loss:.4f}, FIDI Loss: {avg_fidi_loss:.4f}, '
                   f'CE Loss: {avg_ce_loss:.4f}')
             self.scheduler.step()
@@ -357,6 +383,7 @@ class FIDITrainer:
                         'epoch': epoch,
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimizer.state_dict(),
+                        'scheduler_state_dict': self.scheduler.state_dict(),
                         'mAP': mAP,
                         'cmc': cmc,
                     }, 'best_model.pth')
