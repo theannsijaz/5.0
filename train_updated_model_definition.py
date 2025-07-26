@@ -1032,7 +1032,7 @@ class FIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             self.device = torch.device(f"cuda:{device[0]}")
             model = model.to(self.device)
-            self.model = nn.DataParallel(model, device_ids=device)
+            self.model = nn.DataParallel(model, device_ids=[0,1])
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -1649,9 +1649,9 @@ print("Training will start when script is run directly.")
 
 eval_freq = 10  # Evaluation frequency
 
-def save_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses, 
-                       eval_epochs, rank1s, maps, epoch_num, save_dir="training_plots"):
-    """Save individual training plots as PNG files."""
+def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses, 
+                         eval_epochs, rank1s, maps, save_dir="training_plots"):
+    """Update the same training plot files every epoch."""
     os.makedirs(save_dir, exist_ok=True)
     
     # Create loss plot
@@ -1662,12 +1662,13 @@ def save_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_l
     plt.plot(epochs, semantic_losses, label='Semantic Loss', linewidth=2)
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.title(f'Training Losses - Epoch {epoch_num}')
+    plt.title(f'Training Losses - Current Progress')
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     
-    loss_filename = f"{save_dir}/losses_epoch_{epoch_num:03d}.png"
+    # Save to fixed filename (overwrites previous version)
+    loss_filename = f"{save_dir}/training_losses.png"
     plt.savefig(loss_filename, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     
@@ -1678,12 +1679,13 @@ def save_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_l
         plt.plot(eval_epochs, maps, label='mAP', linewidth=2, marker='s')
         plt.xlabel('Epoch')
         plt.ylabel('Score')
-        plt.title(f'Validation Performance - Epoch {epoch_num}')
+        plt.title(f'Validation Performance - Current Progress')
         plt.legend()
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         
-        acc_filename = f"{save_dir}/accuracy_epoch_{epoch_num:03d}.png"
+        # Save to fixed filename (overwrites previous version)
+        acc_filename = f"{save_dir}/validation_accuracy.png"
         plt.savefig(acc_filename, dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
         
@@ -1767,9 +1769,6 @@ if __name__ == "__main__":
         maps = []
         eval_epochs = []
 
-        plt.ion()
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
         for epoch in range(num_epochs):
             log_print(f'\nEpoch {epoch+1}/{num_epochs}')
             log_print('-' * 50)
@@ -1810,48 +1809,18 @@ if __name__ == "__main__":
                 log_print(f"  - Rank-1 Accuracy: {rank1:.4f}")
                 log_print(f"  - mAP: {mAP:.4f}")
 
-            # Live plot and save PNG
-            clear_output(wait=True)
-            ax1.clear()
-            ax1.plot(epochs, train_losses, label='Total Loss')
-            ax1.plot(epochs, fidi_losses, label='FIDI Loss')
-            ax1.plot(epochs, ce_losses, label='CE Loss')
-            ax1.plot(epochs, semantic_losses, label='Semantic Loss')
-            ax1.set_xlabel('Epoch')
-            ax1.set_ylabel('Loss')
-            ax1.set_title('Training Losses')
-            ax1.legend()
-            ax1.grid(True)
-
-            ax2.clear()
-            ax2.plot(eval_epochs, rank1s, label='Rank-1 Accuracy')
-            ax2.plot(eval_epochs, maps, label='mAP')
-            ax2.set_xlabel('Epoch')
-            ax2.set_ylabel('Score')
-            ax2.set_title('Validation: Rank-1 & mAP')
-            ax2.legend()
-            ax2.grid(True)
-
-            # Save individual plots every epoch
-            loss_file, acc_file = save_training_plots(
+            # Update training plots (overwrites the same files)
+            loss_file, acc_file = update_training_plots(
                 epochs, train_losses, fidi_losses, ce_losses, semantic_losses,
-                eval_epochs, rank1s, maps, epoch+1
+                eval_epochs, rank1s, maps
             )
-            log_print(f"Training plots saved: {loss_file}")
+            log_print(f"Training plots updated: {loss_file}")
             if acc_file:
-                log_print(f"Accuracy plot saved: {acc_file}")
-            
-            # Also save the combined plot
-            combined_plot_filename = f"training_plots/combined_progress_epoch_{epoch+1:03d}.png"
-            plt.savefig(combined_plot_filename, dpi=150, bbox_inches='tight', facecolor='white')
-            log_print(f"Combined plot saved: {combined_plot_filename}")
+                log_print(f"Accuracy plot updated: {acc_file}")
             
             # Log learning rate
             current_lr = trainer.optimizer.param_groups[0]['lr']
             log_print(f"Current Learning Rate: {current_lr:.6f}")
-
-            display(fig)
-            plt.pause(0.01)
 
             trainer.scheduler.step()
 
@@ -1894,8 +1863,6 @@ if __name__ == "__main__":
         # Close the log file at the end
         log_file.close()
 
-        plt.ioff()
-        plt.show()
         log_print("Training completed successfully!")
         
         # Log final summary
