@@ -27,7 +27,32 @@ def print_gpu_memory():
         for i in range(torch.cuda.device_count()):
             allocated = torch.cuda.memory_allocated(i) / 1024**3
             cached = torch.cuda.memory_reserved(i) / 1024**3
-            print(f"GPU {i}: Allocated: {allocated:.2f}GB, Cached: {cached:.2f}GB")
+            total = torch.cuda.get_device_properties(i).total_memory / 1024**3
+            free = total - cached
+            print(f"GPU {i}: Allocated: {allocated:.2f}GB, Cached: {cached:.2f}GB, Free: {free:.2f}GB, Total: {total:.2f}GB")
+
+def clear_gpu_memory():
+    """Clear GPU memory cache and garbage collect."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        import gc
+        gc.collect()
+        print("✓ GPU memory cleared")
+
+def check_gpu_distribution(model):
+    """Check if model is properly distributed across GPUs."""
+    if hasattr(model, 'module'):  # DataParallel
+        print(f"✓ Model is wrapped with DataParallel")
+        print(f"  - Device IDs: {model.device_ids}")
+        print(f"  - Output device: {model.output_device}")
+        
+        # Check parameter distribution
+        for i, device_id in enumerate(model.device_ids):
+            device_params = sum(p.numel() for p in model.module.parameters() if p.device.index == device_id)
+            total_params = sum(p.numel() for p in model.module.parameters())
+            print(f"  - GPU {device_id}: {device_params:,} parameters ({device_params/total_params*100:.1f}%)")
+    else:
+        print(f"✓ Model is on single device: {next(model.parameters()).device}")
 
 # In[ ]:
 
@@ -591,16 +616,27 @@ class SOLIDERFIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
             
-            # Place model on the first GPU, then use DataParallel
-            self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)  # Move to first GPU first
+            # Clear GPU memory first
+            torch.cuda.empty_cache()
             
-            # Use DataParallel with specified device IDs
+            # Place model on CPU first, then use DataParallel for proper distribution
+            self.device = torch.device(f"cuda:{device[0]}")
+            model = model.cpu()  # Start on CPU
+            
+            # Use DataParallel with specified device IDs - this will distribute properly
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
             self.is_parallel = True
             
+            # Move the DataParallel model to GPU
+            self.model = self.model.to(self.device)
+            
             print(f"✓ DataParallel initialized with devices: {device}")
             print(f"✓ Model distributed across {len(device)} GPUs")
+            print(f"✓ GPU 0 memory after distribution: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
+            print(f"✓ GPU 1 memory after distribution: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
+            
+            # Verify distribution
+            check_gpu_distribution(self.model)
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -773,6 +809,9 @@ class SOLIDERFIDITrainer:
         self.loss_history['ce'].append(avg_ce)
         self.loss_history['semantic'].append(avg_semantic)
         
+        # Final memory cleanup for this epoch
+        clear_gpu_memory()
+        
         return avg_loss, avg_fidi, avg_ce, avg_semantic, batch_losses, batch_fidi_losses, batch_ce_losses, batch_semantic_losses
     
     def _train_epoch_stage2(self, dataloader, epoch, total_epochs):
@@ -829,8 +868,11 @@ class SOLIDERFIDITrainer:
             self.optimizer.step()
             
             # Clear cache to prevent memory buildup
-            if batch_idx % 5 == 0:  # Clear every 5 batches
+            if batch_idx % 3 == 0:  # Clear every 3 batches for better memory management
                 torch.cuda.empty_cache()
+                if batch_idx % 10 == 0:  # More aggressive cleanup every 10 batches
+                    import gc
+                    gc.collect()
             
             # Track losses safely
             batch_loss = loss.item()
@@ -868,6 +910,9 @@ class SOLIDERFIDITrainer:
         self.loss_history['fidi'].append(avg_fidi)
         self.loss_history['ce'].append(avg_ce)
         self.loss_history['semantic'].append(avg_semantic)
+        
+        # Final memory cleanup for this epoch
+        clear_gpu_memory()
         
         return avg_loss, avg_fidi, avg_ce, avg_semantic, batch_losses, batch_fidi_losses, batch_ce_losses, batch_semantic_losses
     
@@ -1390,10 +1435,10 @@ class FIDITrainer:
 # =========================
 # 6. Tune-able Parameters / Config
 # =========================
-# PK Sampling parameters
-P = 16  # Number of persons per batch
+# PK Sampling parameters - Optimized for dual GPU
+P = 8   # Number of persons per batch (reduced from 16)
 K = 8   # Number of images per person
-batch_size = P * K  # This will be 128 for optimal PK sampling
+batch_size = P * K  # This will be 64 for optimal PK sampling with dual GPU
 
 num_epochs = 200
 # Optimize for dual GPU setup
@@ -1462,7 +1507,7 @@ else:
 train_loader = DataLoader(
     train_dataset,
     sampler=pk_sampler,
-    batch_size=P*K,  # Keep original batch size, DataParallel will handle scaling
+    batch_size=P*K,  # 64 - DataParallel will split this across 2 GPUs (32 per GPU)
     num_workers=num_workers,
     pin_memory=True,
     prefetch_factor=prefetch_factor,
@@ -1517,9 +1562,10 @@ model = SOLIDERPersonReIDModel(num_classes=num_classes)
 
 # Optimize model placement for dual GPU
 if isinstance(device, (list, tuple)) and len(device) >= 2:
-    # Place model on first GPU, DataParallel will handle distribution
-    model = model.to(f"cuda:{device[0]}")
-    print(f"✓ Model placed on GPU {device[0]}, DataParallel will distribute to {device}")
+    # Clear GPU memory and place model on CPU first for proper DataParallel distribution
+    torch.cuda.empty_cache()
+    model = model.cpu()
+    print(f"✓ Model placed on CPU, DataParallel will distribute to {device}")
     
     # Verify GPU memory allocation
     print(f"✓ GPU 0 memory before DataParallel: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
@@ -1573,6 +1619,9 @@ if isinstance(device, (list, tuple)) and len(device) >= 2:
         print(f"  - Cross-GPU tensor operation successful")
         
         print(f"  ✓ DataParallel setup verified!")
+        
+        # Check GPU distribution
+        check_gpu_distribution(trainer.model)
         
     except Exception as e:
         print(f"  ⚠️  DataParallel test failed: {str(e)}")
