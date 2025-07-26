@@ -578,17 +578,10 @@ class SOLIDERFIDITrainer:
         # Device setup with multi-GPU support
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
-            assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
-            
             self.device = torch.device(f"cuda:{device[0]}")
             model = model.to(self.device)
-            
-            # Use DataParallel with specified device IDs
             self.model = nn.DataParallel(model, device_ids=device)
             self.is_parallel = True
-            
-            print(f"✓ DataParallel initialized with devices: {device}")
-            print(f"✓ Model distributed across {len(device)} GPUs")
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -1333,20 +1326,13 @@ K = 4   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling
 
 num_epochs = 250
-# Optimize for dual GPU setup
-if torch.cuda.device_count() >= 2:
-    device = [0, 1]
-    num_workers = 16  # More workers for dual GPU
-    prefetch_factor = 8  # Higher prefetch for better throughput
-else:
-    device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    num_workers = 8
-    prefetch_factor = 4
-
+device = [0, 1] if torch.cuda.device_count() > 1 else ('cuda' if torch.cuda.is_available() else 'cpu')
 alpha = 1.05
 beta = 0.5
 lr = 3.5e-4
 weight_decay = 5e-4
+num_workers = 8
+prefetch_factor = 4
 image_height = 256
 image_width = 128
 train_dir = os.path.join('Dataset', 'train')
@@ -1386,20 +1372,11 @@ num_classes = len(train_dataset.label_map)
 # PKSampler (error if not enough PIDs/images)
 pk_sampler = PKSampler(train_dataset, P=P, K=K)
 
-# Optimize batch sizes for dual GPU
-if isinstance(device, (list, tuple)) and len(device) >= 2:
-    # Increase batch size for dual GPU to maximize utilization
-    effective_batch_size = P * K * len(device)  # 64 * 2 = 128
-    print(f"✓ Dual GPU detected, using effective batch size: {effective_batch_size}")
-else:
-    effective_batch_size = P * K  # 64
-    print(f"✓ Single device, using batch size: {effective_batch_size}")
-
 # Always use PK sampling
 train_loader = DataLoader(
     train_dataset,
     sampler=pk_sampler,
-    batch_size=P*K,  # Keep original batch size, DataParallel will handle scaling
+    batch_size=P*K,
     num_workers=num_workers,
     pin_memory=True,
     prefetch_factor=prefetch_factor,
@@ -1436,15 +1413,7 @@ print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
 
 # Model
 model = SOLIDERPersonReIDModel(num_classes=num_classes)
-
-# Optimize model placement for dual GPU
-if isinstance(device, (list, tuple)) and len(device) >= 2:
-    # Place model on first GPU, DataParallel will handle distribution
-    model = model.to(f"cuda:{device[0]}")
-    print(f"✓ Model placed on GPU {device[0]}, DataParallel will distribute to {device}")
-else:
-    model = model.to(device)
-    print(f"✓ Model placed on device: {device}")
+model = model.to(device if not isinstance(device, (list,tuple)) else f"cuda:{device[0]}")
 
 # Trainer
 trainer = SOLIDERFIDITrainer(
@@ -1737,16 +1706,6 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         print(f"✓ CUDA available: {torch.cuda.get_device_name(0)}")
         print(f"✓ CUDA devices: {torch.cuda.device_count()}")
-        
-        # Show GPU information for dual setup
-        if torch.cuda.device_count() >= 2:
-            print(f"✓ GPU 0: {torch.cuda.get_device_name(0)}")
-            print(f"✓ GPU 1: {torch.cuda.get_device_name(1)}")
-            print(f"✓ Memory GPU 0: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
-            print(f"✓ Memory GPU 1: {torch.cuda.get_device_properties(1).total_memory / 1e9:.1f} GB")
-            print(f"✓ Using DataParallel with devices: {device}")
-        else:
-            print(f"✓ Single GPU: {torch.cuda.get_device_name(0)}")
     else:
         print("⚠ CUDA not available, using CPU")
     
@@ -1770,14 +1729,10 @@ if __name__ == "__main__":
     
     # Print configuration
     print(f"\n⚙️  Configuration:")
-    if isinstance(device, (list, tuple)) and len(device) >= 2:
-        print(f"   Effective batch size: {effective_batch_size} (P={P}, K={K}, GPUs={len(device)})")
-    else:
-        print(f"   Batch size: {P*K} (P={P}, K={K})")
+    print(f"   Batch size: {P*K} (P={P}, K={K})")
     print(f"   Epochs: {num_epochs}")
     print(f"   Learning rate: {lr}")
     print(f"   Device: {device}")
-    print(f"   Workers: {num_workers}, Prefetch: {prefetch_factor}")
     print(f"   FIDI params: α={alpha}, β={beta}")
     print(f"   Image size: {image_height}x{image_width}")
     print(f"   Number of classes: {num_classes}")
@@ -1863,15 +1818,9 @@ if __name__ == "__main__":
             if acc_file:
                 log_print(f"Accuracy plot updated: {acc_file}")
             
-            # Log learning rate and GPU memory usage
+            # Log learning rate
             current_lr = trainer.optimizer.param_groups[0]['lr']
             log_print(f"Current Learning Rate: {current_lr:.6f}")
-            
-            # Log GPU memory usage for dual GPU setup
-            if isinstance(device, (list, tuple)) and len(device) >= 2:
-                gpu0_memory = torch.cuda.memory_allocated(0) / 1e9
-                gpu1_memory = torch.cuda.memory_allocated(1) / 1e9
-                log_print(f"GPU Memory - GPU0: {gpu0_memory:.2f}GB, GPU1: {gpu1_memory:.2f}GB")
 
             trainer.scheduler.step()
 
