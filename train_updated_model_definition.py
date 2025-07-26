@@ -584,7 +584,7 @@ class SOLIDERFIDITrainer:
             model = model.to(self.device)
             
             # Use DataParallel with specified device IDs
-            self.model = nn.DataParallel(model, device_ids=[0, 1])
+            self.model = nn.DataParallel(model, device_ids=device)
             self.is_parallel = True
             
             print(f"✓ DataParallel initialized with devices: {device}")
@@ -1039,7 +1039,7 @@ class FIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             self.device = torch.device(f"cuda:{device[0]}")
             model = model.to(self.device)
-            self.model = nn.DataParallel(model, device_ids=[0,1])
+            self.model = nn.DataParallel(model, device_ids=device)
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -1406,6 +1406,16 @@ train_loader = DataLoader(
     drop_last=True
 )
 
+# Verify DataParallel will work with our batch size
+if isinstance(device, (list, tuple)) and len(device) >= 2:
+    print(f"✓ DataParallel batch distribution:")
+    print(f"  - Input batch size: {P*K}")
+    print(f"  - Effective batch size per GPU: {P*K // len(device)}")
+    print(f"  - Total effective batch size: {P*K * len(device)}")
+    if P*K % len(device) != 0:
+        print(f"⚠️  WARNING: Batch size {P*K} is not evenly divisible by {len(device)} GPUs!")
+        print(f"   This may cause uneven GPU utilization.")
+
 query_loader = DataLoader(
     query_dataset,
     batch_size=P*K,
@@ -1442,6 +1452,11 @@ if isinstance(device, (list, tuple)) and len(device) >= 2:
     # Place model on first GPU, DataParallel will handle distribution
     model = model.to(f"cuda:{device[0]}")
     print(f"✓ Model placed on GPU {device[0]}, DataParallel will distribute to {device}")
+    
+    # Verify GPU memory allocation
+    print(f"✓ GPU 0 memory before DataParallel: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
+    if torch.cuda.device_count() > 1:
+        print(f"✓ GPU 1 memory before DataParallel: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
 else:
     model = model.to(device)
     print(f"✓ Model placed on device: {device}")
@@ -1461,6 +1476,24 @@ trainer = SOLIDERFIDITrainer(
 
 # Enforce SOLIDER stage from epoch 0
 trainer.stage_switch_epoch = 0
+
+# Verify DataParallel setup
+if isinstance(device, (list, tuple)) and len(device) >= 2:
+    print(f"✓ DataParallel verification:")
+    print(f"  - Model device_ids: {trainer.model.device_ids}")
+    print(f"  - Model output_device: {trainer.model.output_device}")
+    print(f"  - GPU 0 memory after DataParallel: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
+    print(f"  - GPU 1 memory after DataParallel: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
+    
+    # Test forward pass to ensure distribution
+    print(f"✓ Testing DataParallel distribution...")
+    test_input = torch.randn(2, 3, image_height, image_width, device=f"cuda:{device[0]}")
+    with torch.no_grad():
+        test_output = trainer.model(test_input)
+    print(f"  - Test input shape: {test_input.shape}")
+    print(f"  - Test output shape: {test_output[0].shape if isinstance(test_output, tuple) else test_output.shape}")
+    print(f"  - GPU 0 memory after test: {torch.cuda.memory_allocated(0) / 1e9:.2f} GB")
+    print(f"  - GPU 1 memory after test: {torch.cuda.memory_allocated(1) / 1e9:.2f} GB")
 
 print(f"✓ SOLIDER model with {num_classes} classes")
 print(f"✓ Trainer initialized – SOLIDER stage from epoch 0 onwards")
@@ -1871,7 +1904,13 @@ if __name__ == "__main__":
             if isinstance(device, (list, tuple)) and len(device) >= 2:
                 gpu0_memory = torch.cuda.memory_allocated(0) / 1e9
                 gpu1_memory = torch.cuda.memory_allocated(1) / 1e9
-                log_print(f"GPU Memory - GPU0: {gpu0_memory:.2f}GB, GPU1: {gpu1_memory:.2f}GB")
+                gpu0_util = torch.cuda.utilization(0) if hasattr(torch.cuda, 'utilization') else 0
+                gpu1_util = torch.cuda.utilization(1) if hasattr(torch.cuda, 'utilization') else 0
+                log_print(f"GPU Memory - GPU0: {gpu0_memory:.2f}GB ({gpu0_util}%), GPU1: {gpu1_memory:.2f}GB ({gpu1_util}%)")
+                
+                # Check if both GPUs are being used
+                if gpu1_memory < 0.1:  # Less than 100MB on GPU1
+                    log_print(f"⚠️  WARNING: GPU1 appears to be underutilized! Memory: {gpu1_memory:.2f}GB")
 
             trainer.scheduler.step()
 
