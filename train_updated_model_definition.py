@@ -17,6 +17,17 @@ from torchvision import transforms
 import random
 from collections import defaultdict
 
+# Memory optimization settings
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.deterministic = False
+
+def print_gpu_memory():
+    """Print current GPU memory usage"""
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            allocated = torch.cuda.memory_allocated(i) / 1024**3
+            cached = torch.cuda.memory_reserved(i) / 1024**3
+            print(f"GPU {i}: Allocated: {allocated:.2f}GB, Cached: {cached:.2f}GB")
 
 # In[ ]:
 
@@ -580,11 +591,12 @@ class SOLIDERFIDITrainer:
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
             
+            # Place model on CPU first, then use DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)
+            model = model.cpu()  # Start on CPU to avoid device conflicts
             
             # Use DataParallel with specified device IDs
-            self.model = nn.DataParallel(model, device_ids=device)
+            self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
             self.is_parallel = True
             
             print(f"✓ DataParallel initialized with devices: {device}")
@@ -712,6 +724,10 @@ class SOLIDERFIDITrainer:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
             
+            # Clear cache to prevent memory buildup
+            if batch_idx % 5 == 0:  # Clear every 5 batches
+                torch.cuda.empty_cache()
+            
             # Track losses
             batch_loss = loss.item()
             batch_fidi = fidi_loss.item()
@@ -732,6 +748,8 @@ class SOLIDERFIDITrainer:
                 print(f'FIDI Stage - Batch {batch_idx}: Loss={batch_loss:.6f}, '
                       f'FIDI={batch_fidi:.6f}×{fidi_weight:.2f}, '
                       f'CE={batch_ce:.6f}×{cls_weight:.2f}')
+                if batch_idx % 50 == 0:  # Print memory every 50 batches
+                    print_gpu_memory()
         
         # Calculate averages
         num_batches = len(dataloader)
@@ -800,6 +818,10 @@ class SOLIDERFIDITrainer:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
             
+            # Clear cache to prevent memory buildup
+            if batch_idx % 5 == 0:  # Clear every 5 batches
+                torch.cuda.empty_cache()
+            
             # Track losses safely
             batch_loss = loss.item()
             batch_fidi = fidi_loss.item()
@@ -822,6 +844,8 @@ class SOLIDERFIDITrainer:
                       f'CE={batch_ce:.6f}×{cls_weight:.2f}, '
                       f'Semantic={batch_semantic:.6f}×{self.semantic_weight:.2f}, '
                       f'Lambda={current_lambda:.1f}')
+                if batch_idx % 50 == 0:  # Print memory every 50 batches
+                    print_gpu_memory()
         
         # Calculate averages
         num_batches = len(dataloader)
@@ -1037,12 +1061,22 @@ class FIDITrainer:
         # Multi-GPU support
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
+            assert len(device) >= 2, "Multi-GPU requires at least 2 devices."
+            
+            # Place model on CPU first, then use DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)
-            self.model = nn.DataParallel(model, device_ids=device)
+            model = model.cpu()  # Start on CPU to avoid device conflicts
+            
+            # Use DataParallel with specified device IDs
+            self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
+            self.is_parallel = True
+            
+            print(f"✓ DataParallel initialized with devices: {device}")
+            print(f"✓ Model distributed across {len(device)} GPUs")
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
+            self.is_parallel = False
         
         self.num_classes = num_classes
         self.fidi_loss = FIDILoss(alpha=alpha, beta=beta)
@@ -1061,6 +1095,10 @@ class FIDITrainer:
         # For adaptive strategy
         self.loss_history = {'fidi': [], 'ce': []}
         self.best_mAP = 0.0
+    
+    def get_model(self):
+        """Get the actual model (handle DataParallel wrapper)"""
+        return self.model.module if hasattr(self, 'is_parallel') and self.is_parallel else self.model
     
     def get_loss_weights(self, epoch, total_epochs, strategy=None):
         """
@@ -1146,6 +1184,10 @@ class FIDITrainer:
             
             self.optimizer.step()
             
+            # Clear cache to prevent memory buildup
+            if batch_idx % 5 == 0:  # Clear every 5 batches
+                torch.cuda.empty_cache()
+            
             # Store all batch values
             batch_loss = loss.item()
             batch_fidi = fidi_loss.item()
@@ -1163,6 +1205,7 @@ class FIDITrainer:
                 print(f'Batch {batch_idx}: Loss={batch_loss:.6f}, '
                       f'FIDI={batch_fidi:.6f}×{fidi_weight:.2f}, '
                       f'CE={batch_ce:.6f}×{cls_weight:.2f}')
+                print_gpu_memory()
         
         avg_loss = total_loss / len(dataloader)
         avg_fidi_loss = total_fidi_loss / len(dataloader)
@@ -1330,7 +1373,7 @@ class FIDITrainer:
 # PK Sampling parameters
 P = 16  # Number of persons per batch
 K = 8   # Number of images per person
-batch_size = P * K  # This will be 64 for optimal PK sampling
+batch_size = P * K  # This will be 128 for optimal PK sampling
 
 num_epochs = 200
 # Optimize for dual GPU setup
@@ -1389,10 +1432,10 @@ pk_sampler = PKSampler(train_dataset, P=P, K=K)
 # Optimize batch sizes for dual GPU
 if isinstance(device, (list, tuple)) and len(device) >= 2:
     # Increase batch size for dual GPU to maximize utilization
-    effective_batch_size = P * K * len(device)  # 64 * 2 = 128
+    effective_batch_size = P * K * len(device)  # 128 * 2 = 256
     print(f"✓ Dual GPU detected, using effective batch size: {effective_batch_size}")
 else:
-    effective_batch_size = P * K  # 64
+    effective_batch_size = P * K  # 128
     print(f"✓ Single device, using batch size: {effective_batch_size}")
 
 # Always use PK sampling
