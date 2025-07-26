@@ -638,12 +638,9 @@ class SOLIDERFIDITrainer:
             # Clear GPU memory first
             torch.cuda.empty_cache()
             
-            # CRITICAL FIX: Move model to first GPU BEFORE wrapping with DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)  # Move to first GPU FIRST
-            
-            # Use DataParallel with specified device IDs - this will distribute properly
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
+            self.model = self.model.to(self.device)
             self.is_parallel = True
             
             print(f"DataParallel initialized with devices: {device}")
@@ -773,8 +770,12 @@ class SOLIDERFIDITrainer:
             self.optimizer.step()
             
             # Clear cache to prevent memory buildup
-            if batch_idx % 5 == 0:  # Clear every 5 batches
-                torch.cuda.empty_cache()
+            if batch_idx % 3 == 0:  # More frequent clearing
+                for i in range(torch.cuda.device_count()):
+                    torch.cuda.empty_cache()
+                    if i < len(device):
+                        with torch.cuda.device(i):
+                            torch.cuda.empty_cache()
             
             # Track losses
             batch_loss = loss.item()
@@ -1122,7 +1123,6 @@ class FIDITrainer:
             
             # Place model on the first GPU, then use DataParallel
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)  # Move to first GPU first
             
             # Use DataParallel with specified device IDs
             self.model = nn.DataParallel(model, device_ids=device, output_device=device[0])
@@ -1450,12 +1450,12 @@ num_epochs = 200
 # Optimize for dual GPU setup
 if torch.cuda.device_count() >= 2:
     device = [0, 1]
-    num_workers = 4  # Reduced workers for stability
-    prefetch_factor = 2  # Reduced prefetch for stability
+    num_workers = 2  # Reduced workers for stability
+    prefetch_factor = 1  # Reduced prefetch for stability
 else:
     device = ('cuda' if torch.cuda.is_available() else 'cpu')
-    num_workers = 4
-    prefetch_factor = 2
+    num_workers = 2
+    prefetch_factor = 1
 
 alpha = 1.05
 beta = 0.5
