@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 # =========================
 # 1. Tuneable Parameters
 # =========================
-MODEL_PATH = 'checkpoint_epoch_50.pt'
-QUERY_DIR = '/home/anns/Downloads/dataSet/query'
-GALLERY_DIR = '/home/anns/Downloads/dataSet/gallery'
+MODEL_PATH = 'weights/checkpoint_epoch_100.pt'
+QUERY_DIR = 'Dataset/query'
+GALLERY_DIR = 'Dataset/gallery'
 IMAGE_SIZE = (256, 128)
 TOP_K = [1, 5, 10, 20]
 NUM_VIS = 40  # Number of random queries to visualize
-RESULTS_DIR = 'Results Old 2'
+RESULTS_DIR = 'IUST Trained Market Tested - trainUpdateLossIpynb'
 VIS_DIR = os.path.join(RESULTS_DIR, 'topk_vis')
 FONT_PATH = None
 CMC_PLOT_PATH = os.path.join(RESULTS_DIR, 'cmc_curve.png')

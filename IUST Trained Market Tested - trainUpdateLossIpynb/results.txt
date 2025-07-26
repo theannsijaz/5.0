@@ -1,0 +1,6 @@
+==== Person Re-ID Results (cosine similarity, single-shot) ====
+Rank-1: 31.21%
+Rank-5: 48.72%
+Rank-10: 57.19%
+Rank-20: 64.34%
+mAP: 12.56%
