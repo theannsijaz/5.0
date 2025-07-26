@@ -584,7 +584,7 @@ class SOLIDERFIDITrainer:
             model = model.to(self.device)
             
             # Use DataParallel with specified device IDs
-            self.model = nn.DataParallel(model, device_ids=device)
+            self.model = nn.DataParallel(model, device_ids=[0, 1])
             self.is_parallel = True
             
             print(f"✓ DataParallel initialized with devices: {device}")
