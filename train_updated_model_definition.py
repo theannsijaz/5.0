@@ -238,15 +238,15 @@ class SpatialSemanticClustering(nn.Module):
         feature_magnitude = torch.norm(feature_maps, dim=1, p=2)  # [B, H, W]
         
         # Adaptive threshold with clamping for stability
-        batch_mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)
-        batch_std = feature_magnitude.std(dim=(1, 2), keepdim=True)
+        batch_mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)  # [B, 1, 1]
+        batch_std = feature_magnitude.std(dim=(1, 2), keepdim=True)     # [B, 1, 1]
         
         # Clamp std to avoid division by zero
         batch_std = torch.clamp(batch_std, min=1e-6)
-        fg_threshold = batch_mean + 0.5 * batch_std
+        fg_threshold = batch_mean + 0.5 * batch_std  # [B, 1, 1]
         
-        # Create foreground mask
-        fg_mask = feature_magnitude > fg_threshold
+        # Create foreground mask and ensure it's [B, H, W]
+        fg_mask = feature_magnitude > fg_threshold  # Broadcasting to [B, H, W]
         
         return fg_mask
     
@@ -267,9 +267,13 @@ class SpatialSemanticClustering(nn.Module):
                                  dtype=torch.long, device=device)
         
         # Vectorized operation instead of loop
-        fg_mask_expanded = fg_mask.unsqueeze(1).expand(-1, H, W)
-        spatial_labels_expanded = spatial_labels.unsqueeze(0).expand(B, -1, -1)
-        pseudo_labels = torch.where(fg_mask_expanded, spatial_labels_expanded, pseudo_labels)
+        # fg_mask is [B, H, W], spatial_labels is [H, W]
+        # Ensure fg_mask is [B, H, W] and spatial_labels is expanded to [B, H, W]
+        if fg_mask.dim() == 4:  # If fg_mask is [B, 1, H, W]
+            fg_mask = fg_mask.squeeze(1)  # Remove the extra dimension
+        
+        spatial_labels_expanded = spatial_labels.unsqueeze(0).expand(B, -1, -1)  # [B, H, W]
+        pseudo_labels = torch.where(fg_mask, spatial_labels_expanded, pseudo_labels)
         
         # Flatten for classification
         student_flat = student_features.permute(0, 2, 3, 1).reshape(-1, C)
