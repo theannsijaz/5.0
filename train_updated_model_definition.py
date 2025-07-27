@@ -1424,7 +1424,7 @@ if isinstance(device, (list, tuple)) and len(device) > 1:
     # Wrap with DataParallel to use multiple GPUs
     model = torch.nn.DataParallel(model, device_ids=device, output_device=device[0])
     #self.is_parallel = True
-    print('YEEEYY')
+    print('YEEEYYY')
 else:
     # Use single device directly
     model = model.to(device)
