@@ -579,13 +579,10 @@ class SOLIDERFIDITrainer:
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             self.device = torch.device(f"cuda:{device[0]}")
-            #model = model.to(self.device)
             self.model = nn.DataParallel(model, device_ids=device)
-            #self.is_parallel = True
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
-            self.is_parallel = False
         
         self.num_classes = num_classes
         self.fidi_loss = FIDILoss(alpha=alpha, beta=beta)
@@ -609,7 +606,7 @@ class SOLIDERFIDITrainer:
     
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
-        return self.model.module if self.is_parallel else self.model
+        return self.model.module if hasattr(self.model, 'module') else self.model
     
     def get_loss_weights(self, epoch, total_epochs, strategy=None):
         """Get dynamic loss weights based on training progress."""
@@ -1423,13 +1420,11 @@ if isinstance(device, (list, tuple)) and len(device) > 1:
 
     # Wrap with DataParallel to use multiple GPUs
     model = torch.nn.DataParallel(model, device_ids=device, output_device=device[0])
-    #self.is_parallel = True
-    print('YEEEYYY')
+    print('Using multiple GPUs with DataParallel')
 else:
     # Use single device directly
     model = model.to(device)
-    self.is_parallel = False
-    print('AAAAAAA!')
+    print('Using single GPU/CPU')
 
 # Trainer
 trainer = SOLIDERFIDITrainer(
