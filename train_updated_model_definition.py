@@ -579,7 +579,7 @@ class SOLIDERFIDITrainer:
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)
+            #model = model.to(self.device)
             self.model = nn.DataParallel(model, device_ids=device)
             self.is_parallel = True
         else:
@@ -689,8 +689,8 @@ class SOLIDERFIDITrainer:
         fidi_weight, cls_weight = self.get_loss_weights(epoch, total_epochs)
         
         for batch_idx, (images, labels) in enumerate(dataloader):
-            images = images.to(self.device, non_blocking=True)
-            labels = labels.to(self.device, non_blocking=True)
+            images = images.cuda(non_blocking=True)
+            labels = labels.cuda(non_blocking=True)
             
             # Standard forward pass (no semantic loss)
             features, logits = self.model(images, return_semantic_loss=False)
@@ -1030,12 +1030,16 @@ class FIDITrainer:
         # Multi-GPU support
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
-            self.device = torch.device(f"cuda:{device[0]}")
-            model = model.to(self.device)
-            self.model = nn.DataParallel(model, device_ids=[0,1])
+            # Use generic cuda device for DataParallel
+            self.device = torch.device("cuda")
+            # Move model to cuda first, then wrap in DataParallel
+            model = model.cuda()
+            self.model = nn.DataParallel(model, device_ids=device)
+            self.is_parallel = True
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
+            self.is_parallel = False
         
         self.num_classes = num_classes
         self.fidi_loss = FIDILoss(alpha=alpha, beta=beta)
