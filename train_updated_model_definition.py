@@ -581,7 +581,7 @@ class SOLIDERFIDITrainer:
             self.device = torch.device(f"cuda:{device[0]}")
             #model = model.to(self.device)
             self.model = nn.DataParallel(model, device_ids=device)
-            self.is_parallel = True
+            #self.is_parallel = True
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -1035,7 +1035,7 @@ class FIDITrainer:
             # Move model to cuda first, then wrap in DataParallel
             model = model.cuda()
             self.model = nn.DataParallel(model, device_ids=device)
-            self.is_parallel = True
+            #self.is_parallel = True
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
@@ -1417,7 +1417,19 @@ print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
 
 # Model
 model = SOLIDERPersonReIDModel(num_classes=num_classes)
-model = model.to(device if not isinstance(device, (list,tuple)) else f"cuda:{device[0]}")
+if isinstance(device, (list, tuple)) and len(device) > 1:
+    # Move model to first GPU
+    model = model.to(torch.device(f"cuda:{device[0]}"))
+
+    # Wrap with DataParallel to use multiple GPUs
+    model = torch.nn.DataParallel(model, device_ids=device, output_device=device[0])
+    #self.is_parallel = True
+    print('YEEEYY')
+else:
+    # Use single device directly
+    model = model.to(device)
+    self.is_parallel = False
+    print('AAAAAAA!')
 
 # Trainer
 trainer = SOLIDERFIDITrainer(
