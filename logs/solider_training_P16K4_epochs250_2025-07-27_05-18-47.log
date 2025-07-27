@@ -1,0 +1,11 @@
+Training started at: 2025-07-27 05:18:47.756645
+Using device: [0, 1]
+FIDI parameters: alpha=1.05, beta=0.5
+PK sampling: P=16, K=4, batch_size=64
+Number of classes: 751
+================================================================================
+
+Epoch 1/250
+--------------------------------------------------
+Starting epoch 1/250
+Training failed with error: grad can be implicitly created only for scalar outputs

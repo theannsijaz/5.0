@@ -771,8 +771,12 @@ class SOLIDERFIDITrainer:
             # Extract semantic loss safely
             if isinstance(semantic_output, dict) and 'semantic_loss' in semantic_output:
                 semantic_loss = semantic_output['semantic_loss']
+                # Ensure it's a scalar tensor
+                if semantic_loss.dim() > 0:
+                    semantic_loss = semantic_loss.mean()
             else:
                 semantic_loss = torch.tensor(0.0, device=self.device, requires_grad=True)
+
             
             # Compute losses
             fidi_loss = self.fidi_loss(features, labels)
