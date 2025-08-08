@@ -4,6 +4,12 @@
 # In[1]:
 
 
+# CRITICAL FIX: Set matplotlib backend BEFORE any other imports
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend
+import matplotlib.pyplot as plt
+plt.ioff()  # Turn off interactive mode
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -1340,9 +1346,13 @@ num_workers = 8
 prefetch_factor = 4
 image_height = 256
 image_width = 128
-train_dir = os.path.join('Dataset', 'train')
-query_dir = os.path.join('Dataset', 'query')
-gallery_dir = os.path.join('Dataset', 'gallery')
+# train_dir = os.path.join('Dataset', 'train')
+# query_dir = os.path.join('Dataset', 'query')
+# gallery_dir = os.path.join('Dataset', 'gallery')
+
+train_dir = '/home/anns/Downloads/dataSet/train'
+query_dir = '/home/anns/Downloads/dataSet/query'
+gallery_dir = '/home/anns/Downloads/dataSet/gallery'
 
 
 # In[ ]:
@@ -1664,45 +1674,45 @@ print("Training will start when script is run directly.")
 
 eval_freq = 10  # Evaluation frequency
 
-def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses, 
+def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses,
                          eval_epochs, rank1s, maps, save_dir="training_plots"):
     """Update the same training plot files every epoch."""
     os.makedirs(save_dir, exist_ok=True)
-    
+
     # Create loss plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(epochs, train_losses, label='Total Loss', linewidth=2)
-    plt.plot(epochs, fidi_losses, label='FIDI Loss', linewidth=2)
-    plt.plot(epochs, ce_losses, label='CE Loss', linewidth=2)
-    plt.plot(epochs, semantic_losses, label='Semantic Loss', linewidth=2)
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title(f'Training Losses - Current Progress')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(epochs, train_losses, label='Total Loss', linewidth=2)
+    ax.plot(epochs, fidi_losses, label='FIDI Loss', linewidth=2)
+    ax.plot(epochs, ce_losses, label='CE Loss', linewidth=2)
+    ax.plot(epochs, semantic_losses, label='Semantic Loss', linewidth=2)
+    ax.set_xlabel('Epoch')
+    ax.set_ylabel('Loss')
+    ax.set_title(f'Training Losses - Current Progress')
+    ax.legend()
+    ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    
+
     # Save to fixed filename (overwrites previous version)
     loss_filename = f"{save_dir}/training_losses.png"
-    plt.savefig(loss_filename, dpi=150, bbox_inches='tight', facecolor='white')
-    plt.close()
+    fig.savefig(loss_filename, dpi=150, bbox_inches='tight', facecolor='white')
+    plt.close(fig)  # Explicitly close the figure
     
     # Create accuracy plot (only if we have evaluation data)
     if eval_epochs and rank1s and maps:
-        plt.figure(figsize=(10, 6))
-        plt.plot(eval_epochs, rank1s, label='Rank-1 Accuracy', linewidth=2, marker='o')
-        plt.plot(eval_epochs, maps, label='mAP', linewidth=2, marker='s')
-        plt.xlabel('Epoch')
-        plt.ylabel('Score')
-        plt.title(f'Validation Performance - Current Progress')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(eval_epochs, rank1s, label='Rank-1 Accuracy', linewidth=2, marker='o')
+        ax.plot(eval_epochs, maps, label='mAP', linewidth=2, marker='s')
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Score')
+        ax.set_title(f'Validation Performance - Current Progress')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
         plt.tight_layout()
-        
+
         # Save to fixed filename (overwrites previous version)
         acc_filename = f"{save_dir}/validation_accuracy.png"
-        plt.savefig(acc_filename, dpi=150, bbox_inches='tight', facecolor='white')
-        plt.close()
+        fig.savefig(acc_filename, dpi=150, bbox_inches='tight', facecolor='white')
+        plt.close(fig)  # Explicitly close the figure
         
         return loss_filename, acc_filename
     else:
