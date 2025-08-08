@@ -951,7 +951,14 @@ class SOLIDERFIDITrainer:
 class FIDILoss(nn.Module):
     """
     Fine-grained Difference-aware (FIDI) Pairwise Loss
-    Corrected implementation following the paper exactly
+    
+    Implements the exact formulation from the paper:
+    L_fidi = D(U||K) + D(K||U)
+    
+    Where:
+    - U = exp(-β * d(zi, zj)) : learned probability distribution  
+    - K = binary ground truth matrix (1 if same identity, 0 otherwise)
+    - D(P||Q) = Σ p_ij * log(α * p_ij / ((α-1) * p_ij + q_ij)) : α-divergence
     """
     def __init__(self, alpha=1.05, beta=0.5):
         super(FIDILoss, self).__init__()
@@ -975,9 +982,9 @@ class FIDILoss(nn.Module):
         # Compute learned probability distribution U using exponential function
         u_matrix = torch.exp(-self.beta * distances)
         
-        # Compute D(U||K) + D(K||U)
-        d_u_k = self.compute_kl_divergence(u_matrix, k_matrix)
-        d_k_u = self.compute_kl_divergence(k_matrix, u_matrix)
+        # Compute D(U||K) + D(K||U) using α-divergence as per paper
+        d_u_k = self.compute_alpha_divergence(u_matrix, k_matrix)
+        d_k_u = self.compute_alpha_divergence(k_matrix, u_matrix)
         
         total_loss = d_u_k + d_k_u
         
@@ -995,13 +1002,20 @@ class FIDILoss(nn.Module):
         
         return distances
     
-    def compute_kl_divergence(self, p_matrix, q_matrix):
+    def compute_alpha_divergence(self, p_matrix, q_matrix):
         """
-        Compute KL divergence D(P||Q) following Equation (5) from the paper:
+        Compute α-divergence D(P||Q) following Equation (5) from the paper:
         D(P||Q) = Σ p_ij * log(α * p_ij / ((α-1) * p_ij + q_ij))
+        
+        This is the exact α-divergence formulation from the FIDI paper.
+        For D(U||K): p=u_matrix, q=k_matrix  
+        For D(K||U): p=k_matrix, q=u_matrix
         """
-        # Clamp to avoid numerical issues
+        # Clamp p_matrix to avoid numerical issues, but be careful with k_matrix
         p_matrix = torch.clamp(p_matrix, min=self.eps, max=1-self.eps)
+        
+        # k_matrix is binary {0,1}, but we need to handle q_matrix generically
+        # since this function is used for both D(U||K) and D(K||U)
         q_matrix = torch.clamp(q_matrix, min=self.eps, max=1-self.eps)
         
         # Compute the denominator: (α-1) * p_ij + q_ij
@@ -1013,14 +1027,14 @@ class FIDILoss(nn.Module):
         fraction = numerator / denominator
         fraction = torch.clamp(fraction, min=self.eps)
         
-        # Compute KL divergence: p_ij * log(fraction)
-        kl_div = p_matrix * torch.log(fraction)
+        # Compute α-divergence: p_ij * log(fraction)
+        alpha_div = p_matrix * torch.log(fraction)
         
         # Exclude diagonal elements (self-comparisons) and compute mean
         mask = ~torch.eye(p_matrix.size(0), dtype=torch.bool, device=p_matrix.device)
-        kl_div = kl_div[mask].mean()
+        alpha_div = alpha_div[mask].mean()
         
-        return kl_div
+        return alpha_div
 
 
 # In[ ]:
@@ -1348,13 +1362,13 @@ num_workers = 8
 prefetch_factor = 4
 image_height = 256
 image_width = 128
-# train_dir = os.path.join('Dataset', 'train')
-# query_dir = os.path.join('Dataset', 'query')
-# gallery_dir = os.path.join('Dataset', 'gallery')
+train_dir = os.path.join('Dataset', 'train')
+query_dir = os.path.join('Dataset', 'query')
+gallery_dir = os.path.join('Dataset', 'gallery')
 
-train_dir = '/home/anns/Downloads/dataSet/train'
-query_dir = '/home/anns/Downloads/dataSet/query'
-gallery_dir = '/home/anns/Downloads/dataSet/gallery'
+# train_dir = '/home/anns/Downloads/dataSet/train'
+# query_dir = '/home/anns/Downloads/dataSet/query'
+# gallery_dir = '/home/anns/Downloads/dataSet/gallery'
 
 
 # In[ ]:
@@ -1841,8 +1855,8 @@ if __name__ == "__main__":
 
             trainer.scheduler.step()
 
-            # Save models every 5 epochs
-            if (epoch + 1) % 5 == 0:
+            # Save models every 10 epochs
+            if (epoch + 1) % 10 == 0:
                 log_print(f"\nSaving models at epoch {epoch+1}...")
                 
                 # Create weights directory if it doesn't exist
