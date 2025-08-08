@@ -585,6 +585,8 @@ class SOLIDERFIDITrainer:
         if isinstance(device, (list, tuple)):
             assert torch.cuda.is_available(), "CUDA must be available for multi-GPU."
             self.device = torch.device(f"cuda:{device[0]}")
+            # Move model to first GPU before DataParallel
+            model = model.to(self.device)
             self.model = nn.DataParallel(model, device_ids=device)
         else:
             self.device = torch.device(device)
@@ -692,8 +694,8 @@ class SOLIDERFIDITrainer:
         fidi_weight, cls_weight = self.get_loss_weights(epoch, total_epochs)
         
         for batch_idx, (images, labels) in enumerate(dataloader):
-            images = images.cuda(non_blocking=True)
-            labels = labels.cuda(non_blocking=True)
+            images = images.to(self.device, non_blocking=True)
+            labels = labels.to(self.device, non_blocking=True)
             
             # Standard forward pass (no semantic loss)
             features, logits = self.model(images, return_semantic_loss=False)
@@ -1426,19 +1428,8 @@ print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
 
 # 8. SOLIDER Model & Trainer Initialization – no fallbacks
 
-# Model
+# Model (Note: The trainer will handle device placement and DataParallel wrapping)
 model = SOLIDERPersonReIDModel(num_classes=num_classes)
-if isinstance(device, (list, tuple)) and len(device) > 1:
-    # Move model to first GPU
-    model = model.to(torch.device(f"cuda:{device[0]}"))
-
-    # Wrap with DataParallel to use multiple GPUs
-    model = torch.nn.DataParallel(model, device_ids=device, output_device=device[0])
-    print('Using multiple GPUs with DataParallel')
-else:
-    # Use single device directly
-    model = model.to(device)
-    print('Using single GPU/CPU')
 
 # Trainer
 trainer = SOLIDERFIDITrainer(
@@ -1453,11 +1444,13 @@ trainer = SOLIDERFIDITrainer(
     semantic_weight=0.5
 )
 
-# Enforce SOLIDER stage from epoch 0
-trainer.stage_switch_epoch = 0
+# Configure SOLIDER stage start (set to 0 for immediate SOLIDER, 100 for FIDI first)
+# Uncomment the line below to start SOLIDER immediately from epoch 0:
+# trainer.stage_switch_epoch = 0
+# Default: FIDI stage (epochs 0-99), then SOLIDER stage (epochs 100+)
 
 print(f"✓ SOLIDER model with {num_classes} classes")
-print(f"✓ Trainer initialized – SOLIDER stage from epoch 0 onwards")
+print(f"✓ Trainer initialized – FIDI stage (0-99), then SOLIDER stage (100+)")
 print(f"Using device(s): {device}")
 
 
@@ -1650,8 +1643,7 @@ print(f"Using device(s): {device}")
 # =========================
 # 9. Training Setup and Configuration
 # =========================
-import matplotlib.pyplot as plt
-from IPython.display import display, clear_output
+# matplotlib already imported with Agg backend at top of file
 import sys
 from datetime import datetime
 import os
@@ -1885,12 +1877,7 @@ if __name__ == "__main__":
                     
                 log_print(f"Model saving completed for epoch {epoch+1}")
 
-        # Close the log file at the end
-        log_file.close()
-
-        log_print("Training completed successfully!")
-        
-        # Log final summary
+        # Log final summary before closing file
         log_print(f"\n" + "="*80)
         log_print("FINAL TRAINING SUMMARY")
         log_print("="*80)
@@ -1901,6 +1888,10 @@ if __name__ == "__main__":
         log_print(f"Best mAP: {max(maps) if maps else 0.0:.4f}")
         log_print(f"Training completed at: {datetime.now()}")
         log_print("="*80)
+        log_print("Training completed successfully!")
+        
+        # Close the log file at the end
+        log_file.close()
         
         # Create final summary plots
         plt.figure(figsize=(15, 10))
@@ -1982,12 +1973,14 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print(f"\n⚠️  Training interrupted by user")
         log_print("Training interrupted by user")
-        log_file.close()
+        if log_file:
+            log_file.close()
         
     except Exception as e:
         print(f"\n❌ Training failed with error: {str(e)}")
         log_print(f"Training failed with error: {str(e)}")
-        log_file.close()
+        if log_file:
+            log_file.close()
         raise e
 
 
