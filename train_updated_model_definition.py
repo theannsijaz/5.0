@@ -257,8 +257,8 @@ class SpatialSemanticClustering(nn.Module):
         mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)
         fg_threshold = 0.5 * (median + mean)
         
-        # Ensure output shape is [B, H, W]
-        fg_mask = (feature_magnitude >= fg_threshold).float()  # Convert to float for gradient
+        # Ensure output shape is [B, H, W] and boolean for torch.where
+        fg_mask = (feature_magnitude >= fg_threshold)  # bool mask
         return fg_mask.view(B, H, W)
     
     def forward(self, student_features, teacher_features=None):
@@ -282,6 +282,7 @@ class SpatialSemanticClustering(nn.Module):
         # Ensure fg_mask is [B, H, W] and spatial_labels is expanded to [B, H, W]
         if fg_mask.dim() == 4:  # If fg_mask is [B, 1, H, W]
             fg_mask = fg_mask.squeeze(1)  # Remove the extra dimension
+        fg_mask = fg_mask.to(torch.bool)
         
         spatial_labels_expanded = spatial_labels.unsqueeze(0).expand(B, -1, -1)  # [B, H, W]
         pseudo_labels = torch.where(fg_mask, spatial_labels_expanded, pseudo_labels)
@@ -2190,6 +2191,22 @@ if __name__ == "__main__":
     print(f"\n🚀 Starting training...")
     print("=" * 80)
     
+    # Optional resume support
+    resume_path = os.environ.get('RESUME_CHECKPOINT', None)
+    start_epoch = 0
+    if resume_path and os.path.exists(resume_path):
+        try:
+            ckpt = torch.load(resume_path, map_location='cpu')
+            trainer.model.load_state_dict(ckpt['model_state_dict'])
+            trainer.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+            if 'scheduler_state_dict' in ckpt:
+                trainer.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
+            start_epoch = int(ckpt.get('epoch', -1)) + 1
+            log_print(f"Resuming from checkpoint: {resume_path} (start_epoch={start_epoch})")
+        except Exception as e:
+            log_print(f"Warning: Failed to load resume checkpoint '{resume_path}': {e}")
+            start_epoch = 0
+
     try:
         # Start training automatically
         train_losses = []
@@ -2203,7 +2220,7 @@ if __name__ == "__main__":
         maps = []
         eval_epochs = []
 
-        for epoch in range(num_epochs):
+        for epoch in range(start_epoch, num_epochs):
             log_print(f'\nEpoch {epoch+1}/{num_epochs}')
             log_print('-' * 50)
             
@@ -2266,6 +2283,20 @@ if __name__ == "__main__":
             log_print(f"Current Learning Rate: {current_lr:.6f}")
 
             trainer.scheduler.step()
+
+            # Always save a last checkpoint for resume
+            try:
+                last_ckpt = {
+                    'epoch': epoch,
+                    'stage': ('fidi' if epoch < trainer.stage_switch_epoch else 'solider'),
+                    'model_state_dict': trainer.model.state_dict(),
+                    'optimizer_state_dict': trainer.optimizer.state_dict(),
+                    'scheduler_state_dict': trainer.scheduler.state_dict(),
+                }
+                os.makedirs('weights', exist_ok=True)
+                torch.save(last_ckpt, 'weights/last_checkpoint.pth')
+            except Exception as e:
+                log_print(f"Warning: Failed to save last checkpoint: {e}")
 
             # Save at key points: end of warmup, middle and end of each stage
             save_points = [trainer.warmup_epochs, 25, 50, 75, 100]
