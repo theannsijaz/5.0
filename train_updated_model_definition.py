@@ -646,6 +646,11 @@ class SOLIDERFIDITrainer:
             lr=lr, 
             weight_decay=weight_decay
         )
+        
+        # Learning rate warmup for better convergence
+        self.base_lr = lr
+        self.warmup_epochs = 4
+        
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=40, gamma=0.1
         )
@@ -658,6 +663,15 @@ class SOLIDERFIDITrainer:
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
         return self.model.module if hasattr(self.model, 'module') else self.model
+    
+    def _apply_warmup(self, epoch):
+        """Apply learning rate warmup for better convergence"""
+        if epoch < self.warmup_epochs:
+            # Linear warmup from 0.1 * base_lr to base_lr
+            warmup_factor = 0.1 + 0.9 * (epoch / self.warmup_epochs)
+            current_lr = self.base_lr * warmup_factor
+            for param_group in self.optimizer.param_groups:
+                param_group['lr'] = current_lr
     
     def get_loss_weights(self, epoch, total_epochs, strategy=None):
         """Get dynamic loss weights based on training progress."""
@@ -697,6 +711,11 @@ class SOLIDERFIDITrainer:
             fidi_weight = 0.7
             cls_weight = 1.0
             
+        elif strategy == 'balanced':
+            # New balanced strategy - starts with reasonable FIDI weight
+            fidi_weight = 0.3 + 0.5 * progress  # 0.3 → 0.8
+            cls_weight = 1.0 - 0.2 * progress   # 1.0 → 0.8
+            
         else:  # 'original'
             fidi_weight = min(1.0, epoch / (total_epochs * 0.3))
             cls_weight = max(0.5, 1.0 - epoch / (total_epochs * 0.8))
@@ -724,6 +743,10 @@ class SOLIDERFIDITrainer:
     def _train_epoch_stage1(self, dataloader, epoch, total_epochs):
         """Stage 1: FIDI training only."""
         self.model.train()
+        
+        # Apply learning rate warmup
+        self._apply_warmup(epoch)
+        
         total_loss = 0.0
         total_fidi_loss = 0.0
         total_ce_loss = 0.0
@@ -891,53 +914,80 @@ class SOLIDERFIDITrainer:
         return avg_loss, avg_fidi, avg_ce, avg_semantic, batch_losses, batch_fidi_losses, batch_ce_losses, batch_semantic_losses
     
     def evaluate(self, query_dataloader, gallery_dataloader):
-        """Evaluation with proper SOLIDER model handling."""
+        """Optimized evaluation with proper SOLIDER model handling."""
         self.model.eval()
-        query_features = []
-        query_labels = []
-        query_cam_ids = []
         
         # Optimal lambda for evaluation (appearance-focused)
         eval_lambda = 0.15
         
+        # Get model once outside the loop
+        actual_model = self.get_model()
+        
+        # Pre-calculate dataset sizes for efficient memory allocation
+        query_size = len(query_dataloader.dataset)
+        gallery_size = len(gallery_dataloader.dataset)
+        feature_dim = 2048  # Known feature dimension
+        
+        # Pre-allocate tensors on GPU for efficiency
+        query_features = torch.zeros(query_size, feature_dim, device=self.device)
+        query_labels = torch.zeros(query_size, dtype=torch.long)
+        query_cam_ids = torch.zeros(query_size, dtype=torch.long)
+        
+        gallery_features = torch.zeros(gallery_size, feature_dim, device=self.device)
+        gallery_labels = torch.zeros(gallery_size, dtype=torch.long)
+        gallery_cam_ids = torch.zeros(gallery_size, dtype=torch.long)
+        
+        # Extract query features efficiently
         with torch.no_grad():
+            start_idx = 0
             for images, labels, cam_ids in query_dataloader:
-                images = images.to(self.device, non_blocking=True)
+                batch_size = images.size(0)
+                end_idx = start_idx + batch_size
                 
-                actual_model = self.get_model()
-                features, logits = actual_model(
+                images = images.to(self.device, non_blocking=True)
+                features, _ = actual_model(
                     images, lambda_val=eval_lambda, return_semantic_loss=False
                 )
                 
-                query_features.append(features.cpu())
-                query_labels.extend(labels.numpy())
-                query_cam_ids.extend(cam_ids.numpy())
+                # Store directly in pre-allocated tensors
+                query_features[start_idx:end_idx] = features
+                query_labels[start_idx:end_idx] = labels
+                query_cam_ids[start_idx:end_idx] = cam_ids
+                start_idx = end_idx
         
-        query_features = torch.cat(query_features, dim=0)
-        query_features = F.normalize(query_features, p=2, dim=1)
-        
-        gallery_features = []
-        gallery_labels = []
-        gallery_cam_ids = []
-        
+        # Extract gallery features efficiently
         with torch.no_grad():
+            start_idx = 0
             for images, labels, cam_ids in gallery_dataloader:
+                batch_size = images.size(0)
+                end_idx = start_idx + batch_size
+                
                 images = images.to(self.device, non_blocking=True)
-
-                actual_model = self.get_model()
-                features, logits = actual_model(
+                features, _ = actual_model(
                     images, lambda_val=eval_lambda, return_semantic_loss=False
                 )
                 
-                gallery_features.append(features.cpu())
-                gallery_labels.extend(labels.numpy())
-                gallery_cam_ids.extend(cam_ids.numpy())
+                # Store directly in pre-allocated tensors
+                gallery_features[start_idx:end_idx] = features
+                gallery_labels[start_idx:end_idx] = labels
+                gallery_cam_ids[start_idx:end_idx] = cam_ids
+                start_idx = end_idx
         
-        gallery_features = torch.cat(gallery_features, dim=0)
+        # Normalize features on GPU
+        query_features = F.normalize(query_features, p=2, dim=1)
         gallery_features = F.normalize(gallery_features, p=2, dim=1)
         
+        # Compute distance matrix on GPU (much faster)
         dist_matrix = torch.cdist(query_features, gallery_features, p=2)
-        cmc, mAP = self.compute_cmc_map(
+        
+        # Move to CPU only for final CMC computation
+        dist_matrix = dist_matrix.cpu()
+        query_labels = query_labels.cpu().numpy()
+        gallery_labels = gallery_labels.cpu().numpy()
+        query_cam_ids = query_cam_ids.cpu().numpy()
+        gallery_cam_ids = gallery_cam_ids.cpu().numpy()
+        
+        cmc, mAP = self.compute_cmc_map_optimized(
             dist_matrix, query_labels, gallery_labels, 
             query_cam_ids, gallery_cam_ids
         )
@@ -994,6 +1044,77 @@ class SOLIDERFIDITrainer:
         mAP = sum(all_AP) / len(all_AP)
         
         return all_cmc, mAP
+    
+    def compute_cmc_map_optimized(self, dist_matrix, query_labels, gallery_labels, 
+                                query_cam_ids, gallery_cam_ids, max_rank=50):
+        """Optimized CMC and mAP computation with vectorization."""
+        num_q, num_g = dist_matrix.shape
+        if num_g < max_rank:
+            max_rank = num_g
+            print(f"Note: number of gallery samples is quite small, got {num_g}")
+        
+        # Vectorized sorting - much faster than individual sorts
+        indices = torch.argsort(dist_matrix, dim=1)
+        
+        # Pre-convert to tensors for faster operations
+        query_labels = torch.tensor(query_labels)
+        gallery_labels = torch.tensor(gallery_labels)
+        query_cam_ids = torch.tensor(query_cam_ids)
+        gallery_cam_ids = torch.tensor(gallery_cam_ids)
+        
+        # Vectorized match computation
+        matches = (gallery_labels[indices] == query_labels.view(-1, 1))
+        
+        all_cmc = []
+        all_AP = []
+        num_valid_q = 0
+        
+        # Process queries in batches for better performance
+        batch_size = min(100, num_q)  # Process 100 queries at a time
+        
+        for batch_start in range(0, num_q, batch_size):
+            batch_end = min(batch_start + batch_size, num_q)
+            
+            for q_idx in range(batch_start, batch_end):
+                q_pid = query_labels[q_idx]
+                q_camid = query_cam_ids[q_idx]
+                order = indices[q_idx]
+                
+                # Vectorized removal computation
+                same_pid = gallery_labels[order] == q_pid
+                same_cam = gallery_cam_ids[order] == q_camid
+                remove = same_pid & same_cam
+                keep = ~remove
+                
+                orig_cmc = matches[q_idx][keep]
+                
+                if not torch.any(orig_cmc):
+                    continue
+                
+                # Optimized CMC computation
+                cmc = torch.cumsum(orig_cmc.float(), dim=0)
+                cmc = torch.clamp(cmc, max=1.0)
+                all_cmc.append(cmc[:max_rank])
+                num_valid_q += 1
+                
+                # Optimized AP computation
+                num_rel = orig_cmc.sum()
+                if num_rel > 0:
+                    tmp_cmc = torch.cumsum(orig_cmc.float(), dim=0)
+                    tmp_cmc = tmp_cmc / torch.arange(1, len(tmp_cmc) + 1, dtype=torch.float)
+                    tmp_cmc = tmp_cmc * orig_cmc.float()
+                    AP = tmp_cmc.sum() / num_rel
+                    all_AP.append(AP)
+        
+        if num_valid_q == 0:
+            raise RuntimeError("No valid query")
+        
+        # Efficient final computation
+        all_cmc = torch.stack(all_cmc, dim=0)
+        all_cmc = all_cmc.mean(0)
+        mAP = torch.stack(all_AP).mean() if all_AP else 0.0
+        
+        return all_cmc, float(mAP)
 
 
 # In[ ]:
@@ -1406,8 +1527,8 @@ batch_size = P * K  # This will be 64 for optimal PK sampling
 num_epochs = 250
 device = [0, 1] if torch.cuda.device_count() > 1 else ('cuda' if torch.cuda.is_available() else 'cpu')
 alpha = 1.05
-beta = 0.5
-lr = 3.5e-4
+beta = 2.0  # Increased for better FIDI sensitivity
+lr = 1e-4  # Reduced for better convergence
 weight_decay = 5e-4
 num_workers = 8
 prefetch_factor = 4
@@ -1505,7 +1626,7 @@ trainer = SOLIDERFIDITrainer(
     beta=beta,
     lr=lr,
     weight_decay=weight_decay,
-    loss_strategy='progressive',
+    loss_strategy='adaptive',
     semantic_weight=0.5,
     memory_efficient=True  # Enable memory optimization
 )
@@ -1714,6 +1835,7 @@ import sys
 from datetime import datetime
 import os
 import json
+import time
 
 # Global log file variable
 log_file = None
@@ -1733,7 +1855,7 @@ print("Training will start when script is run directly.")
 eval_freq = 10  # Evaluation frequency
 
 def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses,
-                         eval_epochs, rank1s, maps, save_dir="training_plots"):
+                         eval_epochs, rank1s, rank3s, rank5s, maps, save_dir="training_plots"):
     """Update the same training plot files every epoch."""
     os.makedirs(save_dir, exist_ok=True)
 
@@ -1757,8 +1879,10 @@ def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic
     
     # Create accuracy plot (only if we have evaluation data)
     if eval_epochs and rank1s and maps:
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(12, 6))
         ax.plot(eval_epochs, rank1s, label='Rank-1 Accuracy', linewidth=2, marker='o')
+        ax.plot(eval_epochs, rank3s, label='Rank-3 Accuracy', linewidth=2, marker='^')
+        ax.plot(eval_epochs, rank5s, label='Rank-5 Accuracy', linewidth=2, marker='v')
         ax.plot(eval_epochs, maps, label='mAP', linewidth=2, marker='s')
         ax.set_xlabel('Epoch')
         ax.set_ylabel('Score')
@@ -1849,6 +1973,8 @@ if __name__ == "__main__":
         semantic_losses = []
         epochs = []
         rank1s = []
+        rank3s = []
+        rank5s = []
         maps = []
         eval_epochs = []
 
@@ -1880,22 +2006,31 @@ if __name__ == "__main__":
             # Evaluate and collect accuracy/mAP
             if (epoch + 1) % eval_freq == 0 or (epoch + 1) == num_epochs:
                 log_print("Evaluating...")
+                eval_start_time = time.time()
                 cmc, mAP = trainer.evaluate(query_loader, gallery_loader)
+                eval_time = time.time() - eval_start_time
+                log_print(f"Evaluation completed in {eval_time:.2f} seconds")
                 rank1 = float(cmc[0].item())
+                rank3 = float(cmc[2].item())  # Rank-3 (index 2)
+                rank5 = float(cmc[4].item())  # Rank-5 (index 4)
                 rank1s.append(rank1)
+                rank3s.append(rank3)
+                rank5s.append(rank5)
                 maps.append(float(mAP))
                 eval_epochs.append(epoch + 1)
-                log_print(f'Rank-1: {rank1:.4f}, mAP: {mAP:.4f}')
+                log_print(f'Rank-1: {rank1:.4f}, Rank-3: {rank3:.4f}, Rank-5: {rank5:.4f}, mAP: {mAP:.4f}')
                 
                 # Log evaluation results
                 log_print(f"Epoch {epoch+1} Evaluation Results:")
                 log_print(f"  - Rank-1 Accuracy: {rank1:.4f}")
+                log_print(f"  - Rank-3 Accuracy: {rank3:.4f}")
+                log_print(f"  - Rank-5 Accuracy: {rank5:.4f}")
                 log_print(f"  - mAP: {mAP:.4f}")
 
             # Update training plots (overwrites the same files)
             loss_file, acc_file = update_training_plots(
                 epochs, train_losses, fidi_losses, ce_losses, semantic_losses,
-                eval_epochs, rank1s, maps
+                eval_epochs, rank1s, rank3s, rank5s, maps
             )
             log_print(f"Training plots updated: {loss_file}")
             if acc_file:
@@ -1949,8 +2084,12 @@ if __name__ == "__main__":
         log_print("="*80)
         log_print(f"Total epochs completed: {num_epochs}")
         log_print(f"Final Rank-1 Accuracy: {rank1s[-1] if rank1s else 0.0:.4f}")
+        log_print(f"Final Rank-3 Accuracy: {rank3s[-1] if rank3s else 0.0:.4f}")
+        log_print(f"Final Rank-5 Accuracy: {rank5s[-1] if rank5s else 0.0:.4f}")
         log_print(f"Final mAP: {maps[-1] if maps else 0.0:.4f}")
         log_print(f"Best Rank-1 Accuracy: {max(rank1s) if rank1s else 0.0:.4f}")
+        log_print(f"Best Rank-3 Accuracy: {max(rank3s) if rank3s else 0.0:.4f}")
+        log_print(f"Best Rank-5 Accuracy: {max(rank5s) if rank5s else 0.0:.4f}")
         log_print(f"Best mAP: {max(maps) if maps else 0.0:.4f}")
         log_print(f"Training completed at: {datetime.now()}")
         log_print("="*80)
@@ -1978,6 +2117,8 @@ if __name__ == "__main__":
         if eval_epochs and rank1s and maps:
             plt.subplot(2, 2, 2)
             plt.plot(eval_epochs, rank1s, label='Rank-1 Accuracy', linewidth=2, marker='o')
+            plt.plot(eval_epochs, rank3s, label='Rank-3 Accuracy', linewidth=2, marker='^')
+            plt.plot(eval_epochs, rank5s, label='Rank-5 Accuracy', linewidth=2, marker='v')
             plt.plot(eval_epochs, maps, label='mAP', linewidth=2, marker='s')
             plt.xlabel('Epoch')
             plt.ylabel('Score')
@@ -1998,12 +2139,16 @@ if __name__ == "__main__":
         # Final metrics subplot
         if eval_epochs and rank1s and maps:
             plt.subplot(2, 2, 4)
-            plt.bar(['Rank-1', 'mAP'], [rank1s[-1], maps[-1]], color=['blue', 'orange'])
+            metrics = ['Rank-1', 'Rank-3', 'Rank-5', 'mAP']
+            values = [rank1s[-1], rank3s[-1], rank5s[-1], maps[-1]]
+            colors = ['blue', 'green', 'red', 'orange']
+            plt.bar(metrics, values, color=colors)
             plt.ylabel('Score')
             plt.title('Final Performance Metrics')
             plt.ylim(0, 1)
-            for i, v in enumerate([rank1s[-1], maps[-1]]):
-                plt.text(i, v + 0.01, f'{v:.4f}', ha='center', va='bottom')
+            plt.xticks(rotation=45)
+            for i, v in enumerate(values):
+                plt.text(i, v + 0.01, f'{v:.3f}', ha='center', va='bottom')
         
         plt.tight_layout()
         final_summary_plot = "training_plots/final_training_summary.png"
@@ -2013,8 +2158,12 @@ if __name__ == "__main__":
         # Save final results
         final_results = {
             'final_rank1': rank1s[-1] if rank1s else 0.0,
+            'final_rank3': rank3s[-1] if rank3s else 0.0,
+            'final_rank5': rank5s[-1] if rank5s else 0.0,
             'final_map': maps[-1] if maps else 0.0,
             'best_rank1': max(rank1s) if rank1s else 0.0,
+            'best_rank3': max(rank3s) if rank3s else 0.0,
+            'best_rank5': max(rank5s) if rank5s else 0.0,
             'best_map': max(maps) if maps else 0.0,
             'total_epochs': num_epochs,
             'training_completed': True,
@@ -2027,8 +2176,12 @@ if __name__ == "__main__":
         print(f"\n✅ Training completed successfully!")
         print(f"📊 Final Results:")
         print(f"   Final Rank-1: {final_results['final_rank1']:.4f}")
+        print(f"   Final Rank-3: {final_results['final_rank3']:.4f}")
+        print(f"   Final Rank-5: {final_results['final_rank5']:.4f}")
         print(f"   Final mAP: {final_results['final_map']:.4f}")
         print(f"   Best Rank-1: {final_results['best_rank1']:.4f}")
+        print(f"   Best Rank-3: {final_results['best_rank3']:.4f}")
+        print(f"   Best Rank-5: {final_results['best_rank5']:.4f}")
         print(f"   Best mAP: {final_results['best_map']:.4f}")
         print(f"📁 Models saved in: weights/")
         print(f"📝 Log saved as: {log_filename}")
