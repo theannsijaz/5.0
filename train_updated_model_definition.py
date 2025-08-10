@@ -640,6 +640,7 @@ class SOLIDERFIDITrainer:
         self.loss_strategy = loss_strategy
         self.semantic_weight = semantic_weight
         self.memory_efficient = memory_efficient
+        self.weight_decay = weight_decay
         
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), 
@@ -650,6 +651,11 @@ class SOLIDERFIDITrainer:
         # Learning rate warmup for better convergence
         self.base_lr = lr
         self.warmup_epochs = 4
+        # Dedicated SOLIDER stage (stage-2) learning rate
+        self.stage2_lr = 1e-4
+        self.stage2_freeze_epochs = 5
+        self.stage2_backbone_frozen = False
+        self.stage2_frozen_until = None
         
         self.scheduler = torch.optim.lr_scheduler.StepLR(
             self.optimizer, step_size=40, gamma=0.1
@@ -721,6 +727,22 @@ class SOLIDERFIDITrainer:
             cls_weight = max(0.5, 1.0 - epoch / (total_epochs * 0.8))
         
         return fidi_weight, cls_weight
+
+    def _freeze_backbone(self, freeze: bool) -> None:
+        """Freeze or unfreeze the ResNet backbone stages (stage0-4)."""
+        actual_model = self.get_model()
+        for stage_name in ['stage0', 'stage1', 'stage2', 'stage3', 'stage4']:
+            stage_module = getattr(actual_model, stage_name, None)
+            if stage_module is not None:
+                for param in stage_module.parameters():
+                    param.requires_grad = not freeze
+        self.stage2_backbone_frozen = freeze
+
+    def _rebuild_optimizer_and_scheduler(self, lr: float) -> None:
+        """Rebuild optimizer with current trainable parameters and restart scheduler."""
+        trainable_params = (p for p in self.model.parameters() if p.requires_grad)
+        self.optimizer = torch.optim.Adam(trainable_params, lr=lr, weight_decay=self.weight_decay)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=40, gamma=0.1)
     
     def train_epoch(self, dataloader, epoch=0, total_epochs=120):
         """
@@ -734,9 +756,11 @@ class SOLIDERFIDITrainer:
                 print("=" * 50)
                 print("SWITCHING TO SOLIDER STAGE")
                 print("=" * 50)
-                # Reduce learning rate for SOLIDER stage
-                for param_group in self.optimizer.param_groups:
-                    param_group['lr'] = param_group['lr'] * 0.1
+                # Freeze backbone for first few SOLIDER epochs
+                self._freeze_backbone(True)
+                self.stage2_frozen_until = epoch + self.stage2_freeze_epochs - 1
+                # Rebuild optimizer/scheduler with stage-2 LR
+                self._rebuild_optimizer_and_scheduler(self.stage2_lr)
             
             return self._train_epoch_stage2(dataloader, epoch, total_epochs)
     
@@ -814,6 +838,12 @@ class SOLIDERFIDITrainer:
     def _train_epoch_stage2(self, dataloader, epoch, total_epochs):
         """Stage 2: SOLIDER training with semantic supervision."""
         self.model.train()
+        # Unfreeze backbone after the initial freeze window
+        if self.stage2_backbone_frozen and self.stage2_frozen_until is not None and epoch > self.stage2_frozen_until:
+            # Preserve current LR while rebuilding
+            current_lr = self.optimizer.param_groups[0]['lr'] if self.optimizer.param_groups else self.stage2_lr
+            self._freeze_backbone(False)
+            self._rebuild_optimizer_and_scheduler(current_lr)
         total_loss = 0.0
         total_fidi_loss = 0.0
         total_ce_loss = 0.0
@@ -836,14 +866,14 @@ class SOLIDERFIDITrainer:
             current_lambda = float(lambda_vals[batch_idx % len(lambda_vals)].item())
             
             # Memory-efficient forward pass with semantic loss
-            actual_model = self.get_model()
+            # Use DP-wrapped model directly to ensure multi-GPU utilization
             
             # Clear cache before forward pass to ensure maximum memory
             if self.memory_efficient and hasattr(torch.cuda, 'empty_cache'):
                 if batch_idx % 5 == 0:  # Don't clear every batch for performance
                     torch.cuda.empty_cache()
             
-            features, logits, semantic_output = actual_model(
+            features, logits, semantic_output = self.model(
                 images, lambda_val=current_lambda, return_semantic_loss=True
             )
             
@@ -920,8 +950,8 @@ class SOLIDERFIDITrainer:
         # Optimal lambda for evaluation (appearance-focused)
         eval_lambda = 0.15
         
-        # Get model once outside the loop
-        actual_model = self.get_model()
+        # Get model once outside the loop (use DP wrapper to utilize all GPUs)
+        actual_model = self.model
         
         # Pre-calculate dataset sizes for efficient memory allocation
         query_size = len(query_dataloader.dataset)
