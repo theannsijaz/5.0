@@ -116,9 +116,21 @@ class SOLIDERStage(nn.Module):
             in_channels = block.conv1.in_channels
             out_channels = block.conv2.out_channels
             stride = block.conv1.stride[0]
-            downsample = block.downsample
             
-            # Create SOLIDER block
+            # CRITICAL FIX: Properly handle downsample layer
+            downsample = None
+            if hasattr(block, 'downsample') and block.downsample is not None:
+                # Copy the existing downsample layer
+                downsample = block.downsample
+            elif stride != 1 or in_channels != out_channels:
+                # Create downsample if needed but not present
+                downsample = nn.Sequential(
+                    nn.Conv2d(in_channels, out_channels, kernel_size=1,
+                             stride=stride, bias=False),
+                    nn.BatchNorm2d(out_channels)
+                )
+            
+            # Create SOLIDER block with proper downsample
             solider_block = SOLIDERCNNBlock(
                 in_channels=in_channels,
                 out_channels=out_channels,
