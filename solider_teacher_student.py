@@ -40,12 +40,9 @@ class TeacherStudentSOLIDER:
             return_semantic_loss: Whether to return semantic supervision info
             masked_features: Optional masked features for prediction
         """
-        if masked_features is not None:
-            # If masked features provided, use them for prediction
-            return self.student(masked_features, lambda_val, return_semantic_loss)
-        else:
-            # Normal forward pass
-            return self.student(images, lambda_val, return_semantic_loss)
+        # Always run the student on images. Masked features are used only to weight semantic loss,
+        # not as image inputs to the backbone.
+        return self.student(images, lambda_val, return_semantic_loss)
         
     @torch.no_grad()
     def forward_teacher(self, images, lambda_val=0.5):
