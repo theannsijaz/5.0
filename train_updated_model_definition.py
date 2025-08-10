@@ -44,7 +44,7 @@ class PKSampler(Sampler):
     """
     Fixed PK Sampler for Person Re-ID: P persons × K images per person
     """
-    def __init__(self, data_source, P=6, K=14):
+    def __init__(self, data_source, P=6, K=12):
         self.data_source = data_source
         self.P = P  # Number of persons per batch
         self.K = K  # Number of images per person
@@ -1349,7 +1349,7 @@ class FIDITrainer:
 # =========================
 # PK Sampling parameters
 P = 6  # Number of persons per batch
-K = 14   # Number of images per person
+K = 12   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling
 
 num_epochs = 250
