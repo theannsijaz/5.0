@@ -620,9 +620,18 @@ class SOLIDERPersonReIDModel(nn.Module):
         # Extract and wrap stages with semantic control
         from solider_blocks import SOLIDERStage
         self.stage0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
+        
+        # Create SOLIDER stages with proper downsampling
+        # Stage 1: 64 -> 256 channels
         self.stage1 = SOLIDERStage(resnet.layer1, config)  # 256 channels
+        
+        # Stage 2: 256 -> 512 channels
         self.stage2 = SOLIDERStage(resnet.layer2, config)  # 512 channels  
+        
+        # Stage 3: 512 -> 1024 channels
         self.stage3 = SOLIDERStage(resnet.layer3, config)  # 1024 channels
+        
+        # Stage 4: 1024 -> 2048 channels
         self.stage4 = SOLIDERStage(resnet.layer4, config)  # 2048 channels
         
         # Multi-scale fusion with correct dimensions
