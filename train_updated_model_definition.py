@@ -222,38 +222,30 @@ class SpatialSemanticClustering(nn.Module):
         # Human prior: spatial semantic assignment
         semantic_labels = torch.zeros(H, W, dtype=torch.long, device=device)
         
-        # Upper body: top 40%
-        upper_mask = y_coords < 0.4
+        # Upper body: top 45% (per paper human prior)
+        upper_mask = y_coords < 0.45
         semantic_labels[upper_mask] = 0
         
-        # Lower body: middle 40%
-        middle_mask = (y_coords >= 0.4) & (y_coords < 0.8)
+        # Lower body: middle (0.45, 0.80]
+        middle_mask = (y_coords >= 0.45) & (y_coords < 0.80)
         semantic_labels[middle_mask] = 1
         
-        # Shoes: bottom 20%
-        lower_mask = y_coords >= 0.8
+        # Shoes: bottom > 0.80
+        lower_mask = y_coords >= 0.80
         semantic_labels[lower_mask] = 2
         
         return semantic_labels
     
     def foreground_background_clustering(self, feature_maps):
-        """Separate foreground and background with improved stability."""
+        """Separate foreground and background using vector magnitude (per paper)."""
+        # Vector magnitudes tend to be higher on foreground; use a robust threshold
         B, C, H, W = feature_maps.shape
-        
-        # Calculate feature magnitude
         feature_magnitude = torch.norm(feature_maps, dim=1, p=2)  # [B, H, W]
-        
-        # Adaptive threshold with clamping for stability
-        batch_mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)  # [B, 1, 1]
-        batch_std = feature_magnitude.std(dim=(1, 2), keepdim=True)     # [B, 1, 1]
-        
-        # Clamp std to avoid division by zero
-        batch_std = torch.clamp(batch_std, min=1e-6)
-        fg_threshold = batch_mean + 0.5 * batch_std  # [B, 1, 1]
-        
-        # Create foreground mask and ensure it's [B, H, W]
-        fg_mask = feature_magnitude > fg_threshold  # Broadcasting to [B, H, W]
-        
+        # Use per-image median + small offset for robustness
+        median = feature_magnitude.view(B, -1).median(dim=1).values.view(B, 1, 1)
+        mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)
+        fg_threshold = 0.5 * (median + mean)
+        fg_mask = feature_magnitude >= fg_threshold
         return fg_mask
     
     def forward(self, student_features, teacher_features=None):
@@ -283,14 +275,11 @@ class SpatialSemanticClustering(nn.Module):
         
         # Memory-efficient semantic classification
         # Instead of flattening entire feature map, process in chunks
-        
-        # Option 1: Use gradient checkpointing to save memory
+        # Use gradient checkpointing to save memory
         semantic_loss = torch.utils.checkpoint.checkpoint(
-            self._compute_semantic_loss, 
-            student_features, 
-            pseudo_labels
+            self._compute_semantic_loss, student_features, pseudo_labels
         )
-        
+
         return {
             'semantic_loss': semantic_loss,
             'pseudo_labels': pseudo_labels.detach(),  # Detach to save memory
@@ -298,8 +287,14 @@ class SpatialSemanticClustering(nn.Module):
             'semantic_logits': None  # Don't store large tensors
         }
     
-    def _compute_semantic_loss(self, student_features, pseudo_labels):
-        """Memory-efficient semantic loss computation"""
+    def _compute_semantic_loss(self, student_features, pseudo_labels, mask=None):
+        """
+        Memory-efficient semantic loss computation with masked token prediction.
+        Args:
+            student_features: Student model features
+            pseudo_labels: Pseudo semantic labels from teacher
+            mask: Optional mask tensor (1 for kept tokens, 0 for masked tokens)
+        """
         B, C, H, W = student_features.shape
         
         # Process in spatial chunks to reduce memory usage
@@ -311,6 +306,16 @@ class SpatialSemanticClustering(nn.Module):
         student_flat = student_features.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
         labels_flat = pseudo_labels.reshape(-1)  # [B*H*W]
         
+        # Handle mask if provided
+        if mask is not None:
+            mask_flat = mask.reshape(-1)  # [B*H*W]
+            # We focus more on predicting masked tokens (higher weight)
+            loss_weights = torch.where(mask_flat == 0, 
+                                     torch.tensor(2.0, device=mask.device),
+                                     torch.tensor(1.0, device=mask.device))
+        else:
+            loss_weights = None
+        
         # Process in chunks
         for start_idx in range(0, student_flat.size(0), chunk_size):
             end_idx = min(start_idx + chunk_size, student_flat.size(0))
@@ -318,19 +323,27 @@ class SpatialSemanticClustering(nn.Module):
             # Get chunk
             chunk_features = student_flat[start_idx:end_idx]
             chunk_labels = labels_flat[start_idx:end_idx]
+            chunk_weights = loss_weights[start_idx:end_idx] if loss_weights is not None else None
             
             # Compute logits for chunk
             chunk_logits = self.semantic_head(chunk_features)
             
-            # Compute loss for chunk
-            chunk_loss = F.cross_entropy(chunk_logits, chunk_labels, 
-                                       reduction='sum', label_smoothing=0.1)
+            # Compute loss for chunk with optional weighting
+            if chunk_weights is not None:
+                chunk_loss = F.cross_entropy(chunk_logits, chunk_labels, 
+                                           reduction='none', label_smoothing=0.1)
+                chunk_loss = (chunk_loss * chunk_weights).sum()
+            else:
+                chunk_loss = F.cross_entropy(chunk_logits, chunk_labels, 
+                                           reduction='sum', label_smoothing=0.1)
             
             total_loss += chunk_loss
             total_pixels += chunk_features.size(0)
             
             # Clear intermediate tensors
             del chunk_logits, chunk_features, chunk_labels
+            if chunk_weights is not None:
+                del chunk_weights
         
         return total_loss / total_pixels
 
@@ -578,7 +591,7 @@ class SOLIDERPersonReIDModel(nn.Module):
     
     def forward(self, x, lambda_val=0.5, return_semantic_loss=False, teacher_features=None):
         """
-        Forward pass with consistent output handling.
+        Forward pass with consistent output handling and masked feature support.
         """
         # Extract multi-scale features
         x0 = self.stage0(x)
@@ -605,6 +618,14 @@ class SOLIDERPersonReIDModel(nn.Module):
         if return_semantic_loss:
             # Semantic clustering for training
             semantic_output = self.semantic_clustering(fused_features, teacher_features)
+            
+            # Add intermediate features for masked modeling
+            semantic_output.update({
+                'student_features': fused_features,  # For masked feature prediction
+                'multi_scale_features': [x1, x2, x3, x4],  # For potential multi-scale supervision
+                'normalized_features': features_normalized  # For consistency checks
+            })
+            
             return features_normalized, logits, semantic_output
         else:
             return features_normalized, logits
@@ -621,7 +642,7 @@ class SOLIDERFIDITrainer:
     def __init__(self, model, num_classes, device='cuda', 
                  alpha=1.05, beta=0.5, lr=3.5e-4, weight_decay=5e-4,
                  loss_strategy='adaptive', semantic_weight=0.5, 
-                 memory_efficient=True):
+                 memory_efficient=True, teacher_momentum=0.999):
         
         # Device setup with multi-GPU support
         if isinstance(device, (list, tuple)):
@@ -634,6 +655,20 @@ class SOLIDERFIDITrainer:
             self.device = torch.device(device)
             self.model = model.to(self.device)
         
+        # Initialize teacher-student framework
+        from solider_teacher_student import TeacherStudentSOLIDER
+        self.teacher_student = TeacherStudentSOLIDER(
+            student_model=self.model,
+            momentum=teacher_momentum
+        )
+        
+        # Initialize masked semantic modeling
+        from masked_semantic_modeling import MaskedSemanticModeling
+        self.masked_modeling = MaskedSemanticModeling(
+            mask_ratio=0.3,
+            num_semantic_parts=3
+        ).to(self.device)
+        
         self.num_classes = num_classes
         self.fidi_loss = FIDILoss(alpha=alpha, beta=beta)
         self.ce_loss = nn.CrossEntropyLoss()
@@ -641,6 +676,7 @@ class SOLIDERFIDITrainer:
         self.semantic_weight = semantic_weight
         self.memory_efficient = memory_efficient
         self.weight_decay = weight_decay
+        self.teacher_momentum = teacher_momentum
         
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), 
@@ -650,21 +686,23 @@ class SOLIDERFIDITrainer:
         
         # Learning rate warmup for better convergence
         self.base_lr = lr
-        self.warmup_epochs = 4
+        self.warmup_epochs = 2  # Reduced warmup for shorter training
         # Dedicated SOLIDER stage (stage-2) learning rate
         self.stage2_lr = 1e-4
-        self.stage2_freeze_epochs = 5
+        self.stage2_freeze_epochs = 2  # Reduced freeze period for shorter training
         self.stage2_backbone_frozen = False
         self.stage2_frozen_until = None
         
+        # Adjust scheduler for shorter training
         self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.optimizer, step_size=40, gamma=0.1
+            self.optimizer, step_size=25, gamma=0.1  # Step at middle of each stage
         )
         
         # Training state
         self.loss_history = {'fidi': [], 'ce': [], 'semantic': []}
         self.best_mAP = 0.0
-        self.stage_switch_epoch = 100  # Switch to SOLIDER stage after this epoch
+        self.stage_switch_epoch = 50  # Switch to SOLIDER stage after 50 epochs
+        self.total_epochs = 100  # Total training epochs (50 FIDI + 50 SOLIDER)
     
     def get_model(self):
         """Get the actual model (handle DataParallel wrapper)"""
@@ -854,9 +892,11 @@ class SOLIDERFIDITrainer:
         batch_ce_losses = []
         batch_semantic_losses = []
         
-        # Generate lambda values for semantic control
+        # Generate lambda values from beta distribution as per paper
         num_batches = len(dataloader)
-        lambda_vals = torch.bernoulli(torch.full((num_batches,), 0.5))
+        # Use beta distribution β(0.2,0.2) as it performed better than uniform
+        alpha = beta = 0.2
+        lambda_vals = torch.distributions.Beta(alpha, beta).sample((num_batches,))
         
         for batch_idx, (images, labels) in enumerate(dataloader):
             images = images.to(self.device, non_blocking=True)
@@ -865,29 +905,55 @@ class SOLIDERFIDITrainer:
             # Get lambda value for this batch
             current_lambda = float(lambda_vals[batch_idx % len(lambda_vals)].item())
             
-            # Memory-efficient forward pass with semantic loss
-            # Use DP-wrapped model directly to ensure multi-GPU utilization
-            
+            # Memory-efficient forward pass with teacher-student framework
             # Clear cache before forward pass to ensure maximum memory
             if self.memory_efficient and hasattr(torch.cuda, 'empty_cache'):
                 if batch_idx % 5 == 0:  # Don't clear every batch for performance
                     torch.cuda.empty_cache()
             
-            features, logits, semantic_output = self.model(
+            # Get teacher features and semantic supervision
+            with torch.no_grad():
+                teacher_output = self.teacher_student.forward_teacher(images, lambda_val=current_lambda)
+                teacher_features = teacher_output[0]  # Features from teacher
+                teacher_semantic = teacher_output[2]  # Semantic output from teacher
+                teacher_pseudo_labels = teacher_semantic['pseudo_labels']
+            
+            # Apply masked modeling to teacher features
+            mask_output = self.masked_modeling(teacher_features)
+            masked_features = mask_output['masked_features']
+            mask = mask_output['mask']
+            
+            # Forward pass through student with masked features
+            features, logits, semantic_output = self.teacher_student.forward_student(
                 images, lambda_val=current_lambda, return_semantic_loss=True
             )
             
-            # Extract semantic loss safely and clear semantic_output immediately
-            if isinstance(semantic_output, dict) and 'semantic_loss' in semantic_output:
-                semantic_loss = semantic_output['semantic_loss']
+            # Update teacher model with momentum
+            self.teacher_student.momentum_update()
+            
+            # Compute semantic loss with masking
+            if isinstance(semantic_output, dict):
+                # Use teacher's pseudo labels and masking for supervision
+                semantic_loss = self._compute_semantic_loss(
+                    student_features=semantic_output.get('student_features', features),
+                    pseudo_labels=teacher_pseudo_labels,
+                    mask=mask
+                )
+                
+                # Add masked feature prediction loss
+                if 'semantic_loss' in semantic_output:
+                    masked_loss = semantic_output['semantic_loss']
+                    semantic_loss = semantic_loss + masked_loss
+                
                 # Ensure it's a scalar tensor
                 if semantic_loss.dim() > 0:
                     semantic_loss = semantic_loss.mean()
             else:
                 semantic_loss = torch.tensor(0.0, device=self.device, requires_grad=True)
             
-            # Clear semantic output to free memory
-            del semantic_output
+            # Clear intermediate outputs to free memory
+            del semantic_output, teacher_output, teacher_features, teacher_semantic
+            del mask_output, masked_features, mask
 
             
             # Compute losses
@@ -1499,10 +1565,26 @@ class FIDITrainer:
         return all_cmc, mAP
     
     def train(self, train_dataloader, query_dataloader, gallery_dataloader, 
-              num_epochs=120, eval_freq=10):
+              num_epochs=None, eval_freq=10):
+        """
+        Train the model with two stages:
+        1. FIDI stage (epochs 0-49): Only FIDI and CE loss
+        2. SOLIDER stage (epochs 50-99): FIDI, CE, and semantic losses
+        """
+        # Use class-defined total epochs if num_epochs is not provided
+        if num_epochs is None:
+            num_epochs = self.total_epochs
+        
         print(f"Starting training with '{self.loss_strategy}' loss weighting strategy...")
+        print(f"Training plan:")
+        print(f"- FIDI stage: epochs 0-{self.stage_switch_epoch-1}")
+        print(f"- SOLIDER stage: epochs {self.stage_switch_epoch}-{num_epochs-1}")
         
         for epoch in range(num_epochs):
+            # Stop training if we've reached total epochs
+            if epoch >= self.total_epochs:
+                print(f"Reached total epochs limit ({self.total_epochs}). Stopping training.")
+                break
             print(f'\nEpoch {epoch+1}/{num_epochs}')
             print('-' * 50)
             
@@ -1550,11 +1632,11 @@ class FIDITrainer:
 # 6. Tune-able Parameters / Config
 # =========================
 # PK Sampling parameters
-P = 4  # Number of persons per batch
-K = 8   # Number of images per person
+P = 8  # Number of persons per batch
+K = 12   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling
 
-num_epochs = 250
+num_epochs = 100  # Total epochs (50 FIDI + 50 SOLIDER)
 device = [0, 1] if torch.cuda.device_count() > 1 else ('cuda' if torch.cuda.is_available() else 'cpu')
 alpha = 1.05
 beta = 2.0  # Increased for better FIDI sensitivity
@@ -2072,8 +2154,7 @@ if __name__ == "__main__":
 
             trainer.scheduler.step()
 
-            # Save models every 10 epochs
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 25 == 0:
                 log_print(f"\nSaving models at epoch {epoch+1}...")
                 
                 # Create weights directory if it doesn't exist
