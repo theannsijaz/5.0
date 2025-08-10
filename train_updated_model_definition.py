@@ -972,11 +972,18 @@ class SOLIDERFIDITrainer:
                 with torch.no_grad():
                     teacher_output = self.teacher_student.forward_teacher(images, lambda_val=current_lambda)
                     if isinstance(teacher_output, (list, tuple)) and len(teacher_output) >= 3:
-                        teacher_features = teacher_output[0]  # Features from teacher
-                        teacher_semantic = teacher_output[2]  # Semantic output from teacher
-                        
+                        # Teacher returns (features_fidi [B,2048], logits [B,num_classes], semantic_output dict)
+                        teacher_semantic = teacher_output[2]
+                        # Use spatial fused features from teacher for masked modeling and pseudo labels
+                        teacher_features = None
+                        if isinstance(teacher_semantic, dict):
+                            teacher_features = teacher_semantic.get('student_features', None)
+                            teacher_pseudo_labels = teacher_semantic.get('pseudo_labels', None)
+                        else:
+                            teacher_pseudo_labels = None
+
                         # Ensure teacher_features has the right shape (B, C, H, W)
-                        if len(teacher_features.shape) == 4:
+                        if teacher_features is not None and teacher_features.dim() == 4:
                             # Apply masked modeling if configured
                             if self.config.masked_modeling:
                                 try:
@@ -990,15 +997,9 @@ class SOLIDERFIDITrainer:
                             else:
                                 masked_features = None
                                 mask = None
-                            
-                            if isinstance(teacher_semantic, dict) and 'pseudo_labels' in teacher_semantic:
-                                teacher_pseudo_labels = teacher_semantic['pseudo_labels']
-                            else:
-                                teacher_pseudo_labels = None
                         else:
-                            print(f"Warning: Teacher features have unexpected shape: {teacher_features.shape}")
-                            teacher_features = None
-                            teacher_pseudo_labels = None
+                            # Unexpected: teacher provided pooled features only
+                            print(f"Warning: Teacher features have unexpected shape: {None if teacher_features is None else teacher_features.shape}")
                             masked_features = None
                             mask = None
                     else:
