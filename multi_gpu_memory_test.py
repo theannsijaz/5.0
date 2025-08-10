@@ -114,8 +114,10 @@ def test_multi_gpu_memory():
         )
         print_gpu_memory("SOLIDER forward")
         
-        # Extract semantic loss
+        # Extract semantic loss and ensure it's scalar
         semantic_loss = semantic_output['semantic_loss']
+        if semantic_loss.dim() > 0:
+            semantic_loss = semantic_loss.mean()
         print_gpu_memory("Semantic extracted")
         
         # Compute all losses (exactly like your training)
@@ -123,6 +125,10 @@ def test_multi_gpu_memory():
         ce_loss = ce_loss_fn(logits, test_labels)
         total_loss = 0.32 * fidi_loss + 0.88 * ce_loss + 0.5 * semantic_loss
         print_gpu_memory("All losses computed")
+        
+        # Ensure total_loss is scalar before backward pass
+        if total_loss.dim() > 0:
+            total_loss = total_loss.mean()
         
         # The critical backward pass
         total_loss.backward()
@@ -193,10 +199,16 @@ def test_batch_size_with_dataparallel():
                 return_semantic_loss=True
             )
             
-            # Test backward pass
+            # Test backward pass with proper scalar handling
             semantic_loss = semantic_output['semantic_loss']
+            if semantic_loss.dim() > 0:
+                semantic_loss = semantic_loss.mean()
             ce_loss = nn.CrossEntropyLoss()(logits, test_labels)
             total_loss = ce_loss + 0.5 * semantic_loss
+            
+            # Ensure scalar before backward
+            if total_loss.dim() > 0:
+                total_loss = total_loss.mean()
             total_loss.backward()
             
             print(f"✅ P={P}, K={K} works with DataParallel!")
