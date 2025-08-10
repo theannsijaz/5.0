@@ -594,15 +594,20 @@ class SOLIDERPersonReIDModel(nn.Module):
         pooled_features = self.global_pool(fused_features)
         pooled_features = pooled_features.view(pooled_features.size(0), -1)
         features = self.bn_neck(pooled_features)
-        logits = self.classifier(features)
+        
+        # CRITICAL FIX: Normalize features for FIDI loss
+        # This ensures proper distance scale for α-divergence computation
+        features_normalized = F.normalize(features, p=2, dim=1)
+        
+        logits = self.classifier(features_normalized)
         
         # Return based on request
         if return_semantic_loss:
             # Semantic clustering for training
             semantic_output = self.semantic_clustering(fused_features, teacher_features)
-            return features, logits, semantic_output
+            return features_normalized, logits, semantic_output
         else:
-            return features, logits
+            return features_normalized, logits
 
 def create_solider_model(num_classes):
     """Factory function to create SOLIDER model."""
