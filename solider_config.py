@@ -15,6 +15,11 @@ class SOLIDERConfig:
     lambda_distribution: Literal['binomial', 'beta', 'uniform'] = 'binomial'
     freeze_semantic_embeddings: bool = True
     
+    # Teacher-Student Framework
+    teacher_momentum: float = 0.999  # EMA momentum for teacher update
+    masked_modeling: bool = True  # Whether to use masked semantic modeling
+    mask_ratio: float = 0.3  # Ratio of semantic parts to mask
+    
     # Semantic Parts (y-coordinate ranges)
     upper_body_range: Tuple[float, float] = (0.0, 0.40)  # Head, chest, arms
     lower_body_range: Tuple[float, float] = (0.40, 0.75)  # Waist, thighs
