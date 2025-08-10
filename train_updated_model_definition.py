@@ -44,7 +44,7 @@ class PKSampler(Sampler):
     """
     Fixed PK Sampler for Person Re-ID: P persons × K images per person
     """
-    def __init__(self, data_source, P=6, K=12):
+    def __init__(self, data_source, P=4, K=8):
         self.data_source = data_source
         self.P = P  # Number of persons per batch
         self.K = K  # Number of images per person
@@ -1520,15 +1520,15 @@ class FIDITrainer:
 # 6. Tune-able Parameters / Config
 # =========================
 # PK Sampling parameters
-P = 6  # Number of persons per batch
-K = 12   # Number of images per person
+P = 4  # Number of persons per batch
+K = 8   # Number of images per person
 batch_size = P * K  # This will be 64 for optimal PK sampling
 
 num_epochs = 250
 device = [0, 1] if torch.cuda.device_count() > 1 else ('cuda' if torch.cuda.is_available() else 'cpu')
 alpha = 1.05
 beta = 2.0  # Increased for better FIDI sensitivity
-lr = 1e-4  # Reduced for better convergence
+lr = 3e-4  # Reduced for better convergence
 weight_decay = 5e-4
 num_workers = 8
 prefetch_factor = 4
@@ -1626,7 +1626,7 @@ trainer = SOLIDERFIDITrainer(
     beta=beta,
     lr=lr,
     weight_decay=weight_decay,
-    loss_strategy='adaptive',
+    loss_strategy='balanced',
     semantic_weight=0.5,
     memory_efficient=True  # Enable memory optimization
 )
@@ -1852,7 +1852,7 @@ def log_print(*args, **kwargs):
 print("SOLIDER model and trainer initialized successfully!")
 print("Training will start when script is run directly.")
 
-eval_freq = 10  # Evaluation frequency
+eval_freq = 50  # Evaluation frequency
 
 def update_training_plots(epochs, train_losses, fidi_losses, ce_losses, semantic_losses,
                          eval_epochs, rank1s, rank3s, rank5s, maps, save_dir="training_plots"):
