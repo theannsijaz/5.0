@@ -1,0 +1,2577 @@
+Training started at: 2025-08-10 17:08:09.615191
+Using device: [0, 1]
+FIDI parameters: alpha=1.05, beta=2.0
+PK sampling: P=4, K=8, batch_size=32
+Number of classes: 751
+================================================================================
+
+Epoch 1/250
+--------------------------------------------------
+Starting epoch 1/250
+Epoch 1 Training Results:
+  - Total Loss: 6.804242
+  - FIDI Loss: 0.601871 × 0.30
+  - CE Loss: 6.623681 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000030
+
+Epoch 2/250
+--------------------------------------------------
+Starting epoch 2/250
+Epoch 2 Training Results:
+  - Total Loss: 6.771464
+  - FIDI Loss: 0.548179 × 0.30
+  - CE Loss: 6.611203 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000097
+
+Epoch 3/250
+--------------------------------------------------
+Starting epoch 3/250
+Epoch 3 Training Results:
+  - Total Loss: 6.700089
+  - FIDI Loss: 0.438713 × 0.30
+  - CE Loss: 6.577244 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000165
+
+Epoch 4/250
+--------------------------------------------------
+Starting epoch 4/250
+Epoch 4 Training Results:
+  - Total Loss: 6.640855
+  - FIDI Loss: 0.409179 × 0.31
+  - CE Loss: 6.531321 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 5/250
+--------------------------------------------------
+Starting epoch 5/250
+Epoch 5 Training Results:
+  - Total Loss: 6.581588
+  - FIDI Loss: 0.396454 × 0.31
+  - CE Loss: 6.480217 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 6/250
+--------------------------------------------------
+Starting epoch 6/250
+Epoch 6 Training Results:
+  - Total Loss: 6.527101
+  - FIDI Loss: 0.389229 × 0.31
+  - CE Loss: 6.432169 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 7/250
+--------------------------------------------------
+Starting epoch 7/250
+Epoch 7 Training Results:
+  - Total Loss: 6.477284
+  - FIDI Loss: 0.378413 × 0.31
+  - CE Loss: 6.389891 × 1.00
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 8/250
+--------------------------------------------------
+Starting epoch 8/250
+Epoch 8 Training Results:
+  - Total Loss: 6.442471
+  - FIDI Loss: 0.377258 × 0.31
+  - CE Loss: 6.359626 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 9/250
+--------------------------------------------------
+Starting epoch 9/250
+Epoch 9 Training Results:
+  - Total Loss: 6.408464
+  - FIDI Loss: 0.380697 × 0.32
+  - CE Loss: 6.328667 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 10/250
+--------------------------------------------------
+Starting epoch 10/250
+Epoch 10 Training Results:
+  - Total Loss: 6.363447
+  - FIDI Loss: 0.366136 × 0.32
+  - CE Loss: 6.292320 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Saving models at epoch 10...
+PyTorch model saved: weights/checkpoint_epoch_10.pth
+TorchScript model saved: weights/checkpoint_epoch_10.pt
+Model saving completed for epoch 10
+
+Epoch 11/250
+--------------------------------------------------
+Starting epoch 11/250
+Epoch 11 Training Results:
+  - Total Loss: 6.333893
+  - FIDI Loss: 0.365718 × 0.32
+  - CE Loss: 6.266999 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 12/250
+--------------------------------------------------
+Starting epoch 12/250
+Epoch 12 Training Results:
+  - Total Loss: 6.299694
+  - FIDI Loss: 0.362423 × 0.32
+  - CE Loss: 6.237887 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 13/250
+--------------------------------------------------
+Starting epoch 13/250
+Epoch 13 Training Results:
+  - Total Loss: 6.274694
+  - FIDI Loss: 0.360636 × 0.32
+  - CE Loss: 6.217536 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 14/250
+--------------------------------------------------
+Starting epoch 14/250
+Epoch 14 Training Results:
+  - Total Loss: 6.254625
+  - FIDI Loss: 0.363257 × 0.33
+  - CE Loss: 6.200691 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 15/250
+--------------------------------------------------
+Starting epoch 15/250
+Epoch 15 Training Results:
+  - Total Loss: 6.229951
+  - FIDI Loss: 0.356238 × 0.33
+  - CE Loss: 6.182348 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 16/250
+--------------------------------------------------
+Starting epoch 16/250
+Epoch 16 Training Results:
+  - Total Loss: 6.216075
+  - FIDI Loss: 0.360407 × 0.33
+  - CE Loss: 6.171196 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 17/250
+--------------------------------------------------
+Starting epoch 17/250
+Epoch 17 Training Results:
+  - Total Loss: 6.190790
+  - FIDI Loss: 0.358676 × 0.33
+  - CE Loss: 6.150435 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 18/250
+--------------------------------------------------
+Starting epoch 18/250
+Epoch 18 Training Results:
+  - Total Loss: 6.161103
+  - FIDI Loss: 0.349083 × 0.33
+  - CE Loss: 6.127848 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 19/250
+--------------------------------------------------
+Starting epoch 19/250
+Epoch 19 Training Results:
+  - Total Loss: 6.134801
+  - FIDI Loss: 0.344404 × 0.34
+  - CE Loss: 6.107022 × 0.99
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 20/250
+--------------------------------------------------
+Starting epoch 20/250
+Epoch 20 Training Results:
+  - Total Loss: 6.105337
+  - FIDI Loss: 0.342491 × 0.34
+  - CE Loss: 6.082022 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Saving models at epoch 20...
+PyTorch model saved: weights/checkpoint_epoch_20.pth
+TorchScript model saved: weights/checkpoint_epoch_20.pt
+Model saving completed for epoch 20
+
+Epoch 21/250
+--------------------------------------------------
+Starting epoch 21/250
+Epoch 21 Training Results:
+  - Total Loss: 6.083775
+  - FIDI Loss: 0.339251 × 0.34
+  - CE Loss: 6.065477 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 22/250
+--------------------------------------------------
+Starting epoch 22/250
+Epoch 22 Training Results:
+  - Total Loss: 6.055220
+  - FIDI Loss: 0.330044 × 0.34
+  - CE Loss: 6.043882 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 23/250
+--------------------------------------------------
+Starting epoch 23/250
+Epoch 23 Training Results:
+  - Total Loss: 6.036432
+  - FIDI Loss: 0.328775 × 0.34
+  - CE Loss: 6.029452 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 24/250
+--------------------------------------------------
+Starting epoch 24/250
+Epoch 24 Training Results:
+  - Total Loss: 6.026206
+  - FIDI Loss: 0.328336 × 0.35
+  - CE Loss: 6.023433 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 25/250
+--------------------------------------------------
+Starting epoch 25/250
+Epoch 25 Training Results:
+  - Total Loss: 6.014153
+  - FIDI Loss: 0.332207 × 0.35
+  - CE Loss: 6.014014 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 26/250
+--------------------------------------------------
+Starting epoch 26/250
+Epoch 26 Training Results:
+  - Total Loss: 5.980288
+  - FIDI Loss: 0.316818 × 0.35
+  - CE Loss: 5.989185 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 27/250
+--------------------------------------------------
+Starting epoch 27/250
+Epoch 27 Training Results:
+  - Total Loss: 5.966984
+  - FIDI Loss: 0.320223 × 0.35
+  - CE Loss: 5.978620 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 28/250
+--------------------------------------------------
+Starting epoch 28/250
+Epoch 28 Training Results:
+  - Total Loss: 5.956640
+  - FIDI Loss: 0.322253 × 0.35
+  - CE Loss: 5.971548 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 29/250
+--------------------------------------------------
+Starting epoch 29/250
+Epoch 29 Training Results:
+  - Total Loss: 5.949587
+  - FIDI Loss: 0.323740 × 0.36
+  - CE Loss: 5.968019 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 30/250
+--------------------------------------------------
+Starting epoch 30/250
+Epoch 30 Training Results:
+  - Total Loss: 5.928111
+  - FIDI Loss: 0.315329 × 0.36
+  - CE Loss: 5.953340 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Saving models at epoch 30...
+PyTorch model saved: weights/checkpoint_epoch_30.pth
+TorchScript model saved: weights/checkpoint_epoch_30.pt
+Model saving completed for epoch 30
+
+Epoch 31/250
+--------------------------------------------------
+Starting epoch 31/250
+Epoch 31 Training Results:
+  - Total Loss: 5.909938
+  - FIDI Loss: 0.310813 × 0.36
+  - CE Loss: 5.940620 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 32/250
+--------------------------------------------------
+Starting epoch 32/250
+Epoch 32 Training Results:
+  - Total Loss: 5.904188
+  - FIDI Loss: 0.313226 × 0.36
+  - CE Loss: 5.938064 × 0.98
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 33/250
+--------------------------------------------------
+Starting epoch 33/250
+Epoch 33 Training Results:
+  - Total Loss: 5.884976
+  - FIDI Loss: 0.309523 × 0.36
+  - CE Loss: 5.923963 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 34/250
+--------------------------------------------------
+Starting epoch 34/250
+Epoch 34 Training Results:
+  - Total Loss: 5.883861
+  - FIDI Loss: 0.311738 × 0.37
+  - CE Loss: 5.926218 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 35/250
+--------------------------------------------------
+Starting epoch 35/250
+Epoch 35 Training Results:
+  - Total Loss: 5.868218
+  - FIDI Loss: 0.304528 × 0.37
+  - CE Loss: 5.917097 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 36/250
+--------------------------------------------------
+Starting epoch 36/250
+Epoch 36 Training Results:
+  - Total Loss: 5.849777
+  - FIDI Loss: 0.302856 × 0.37
+  - CE Loss: 5.903004 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 37/250
+--------------------------------------------------
+Starting epoch 37/250
+Epoch 37 Training Results:
+  - Total Loss: 5.850013
+  - FIDI Loss: 0.305248 × 0.37
+  - CE Loss: 5.906570 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 38/250
+--------------------------------------------------
+Starting epoch 38/250
+Epoch 38 Training Results:
+  - Total Loss: 5.837430
+  - FIDI Loss: 0.304494 × 0.37
+  - CE Loss: 5.898134 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 39/250
+--------------------------------------------------
+Starting epoch 39/250
+Epoch 39 Training Results:
+  - Total Loss: 5.822971
+  - FIDI Loss: 0.300990 × 0.38
+  - CE Loss: 5.888819 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Epoch 40/250
+--------------------------------------------------
+Starting epoch 40/250
+Epoch 40 Training Results:
+  - Total Loss: 5.824511
+  - FIDI Loss: 0.304452 × 0.38
+  - CE Loss: 5.893300 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000232
+
+Saving models at epoch 40...
+PyTorch model saved: weights/checkpoint_epoch_40.pth
+TorchScript model saved: weights/checkpoint_epoch_40.pt
+Model saving completed for epoch 40
+
+Epoch 41/250
+--------------------------------------------------
+Starting epoch 41/250
+Epoch 41 Training Results:
+  - Total Loss: 5.771389
+  - FIDI Loss: 0.291389 × 0.38
+  - CE Loss: 5.847790 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 42/250
+--------------------------------------------------
+Starting epoch 42/250
+Epoch 42 Training Results:
+  - Total Loss: 5.759070
+  - FIDI Loss: 0.293181 × 0.38
+  - CE Loss: 5.838580 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 43/250
+--------------------------------------------------
+Starting epoch 43/250
+Epoch 43 Training Results:
+  - Total Loss: 5.740869
+  - FIDI Loss: 0.286169 × 0.38
+  - CE Loss: 5.826759 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 44/250
+--------------------------------------------------
+Starting epoch 44/250
+Epoch 44 Training Results:
+  - Total Loss: 5.741926
+  - FIDI Loss: 0.293727 × 0.39
+  - CE Loss: 5.829068 × 0.97
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 45/250
+--------------------------------------------------
+Starting epoch 45/250
+Epoch 45 Training Results:
+  - Total Loss: 5.727644
+  - FIDI Loss: 0.286591 × 0.39
+  - CE Loss: 5.821358 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 46/250
+--------------------------------------------------
+Starting epoch 46/250
+Epoch 46 Training Results:
+  - Total Loss: 5.703568
+  - FIDI Loss: 0.273064 × 0.39
+  - CE Loss: 5.806093 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 47/250
+--------------------------------------------------
+Starting epoch 47/250
+Epoch 47 Training Results:
+  - Total Loss: 5.722139
+  - FIDI Loss: 0.284070 × 0.39
+  - CE Loss: 5.825149 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 48/250
+--------------------------------------------------
+Starting epoch 48/250
+Epoch 48 Training Results:
+  - Total Loss: 5.702053
+  - FIDI Loss: 0.278554 × 0.39
+  - CE Loss: 5.810788 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 49/250
+--------------------------------------------------
+Starting epoch 49/250
+Epoch 49 Training Results:
+  - Total Loss: 5.698052
+  - FIDI Loss: 0.277352 × 0.40
+  - CE Loss: 5.811377 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Current Learning Rate: 0.000023
+
+Epoch 50/250
+--------------------------------------------------
+Starting epoch 50/250
+Epoch 50 Training Results:
+  - Total Loss: 5.696791
+  - FIDI Loss: 0.280578 × 0.40
+  - CE Loss: 5.812990 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Evaluating...
+Evaluation completed in 69.48 seconds
+Rank-1: 0.4534, Rank-3: 0.6211, Rank-5: 0.6921, mAP: 0.2808
+Epoch 50 Evaluation Results:
+  - Rank-1 Accuracy: 0.4534
+  - Rank-3 Accuracy: 0.6211
+  - Rank-5 Accuracy: 0.6921
+  - mAP: 0.2808
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Saving models at epoch 50...
+PyTorch model saved: weights/checkpoint_epoch_50.pth
+TorchScript model saved: weights/checkpoint_epoch_50.pt
+Model saving completed for epoch 50
+
+Epoch 51/250
+--------------------------------------------------
+Starting epoch 51/250
+Epoch 51 Training Results:
+  - Total Loss: 5.698943
+  - FIDI Loss: 0.275964 × 0.40
+  - CE Loss: 5.821414 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 52/250
+--------------------------------------------------
+Starting epoch 52/250
+Epoch 52 Training Results:
+  - Total Loss: 5.687059
+  - FIDI Loss: 0.277140 × 0.40
+  - CE Loss: 5.812811 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 53/250
+--------------------------------------------------
+Starting epoch 53/250
+Epoch 53 Training Results:
+  - Total Loss: 5.683205
+  - FIDI Loss: 0.278595 × 0.40
+  - CE Loss: 5.812450 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 54/250
+--------------------------------------------------
+Starting epoch 54/250
+Epoch 54 Training Results:
+  - Total Loss: 5.672073
+  - FIDI Loss: 0.278211 × 0.41
+  - CE Loss: 5.805263 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 55/250
+--------------------------------------------------
+Starting epoch 55/250
+Epoch 55 Training Results:
+  - Total Loss: 5.667832
+  - FIDI Loss: 0.273459 × 0.41
+  - CE Loss: 5.807129 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 56/250
+--------------------------------------------------
+Starting epoch 56/250
+Epoch 56 Training Results:
+  - Total Loss: 5.670594
+  - FIDI Loss: 0.282827 × 0.41
+  - CE Loss: 5.810287 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 57/250
+--------------------------------------------------
+Starting epoch 57/250
+Epoch 57 Training Results:
+  - Total Loss: 5.663856
+  - FIDI Loss: 0.275011 × 0.41
+  - CE Loss: 5.810879 × 0.96
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 58/250
+--------------------------------------------------
+Starting epoch 58/250
+Epoch 58 Training Results:
+  - Total Loss: 5.655258
+  - FIDI Loss: 0.274073 × 0.41
+  - CE Loss: 5.806572 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 59/250
+--------------------------------------------------
+Starting epoch 59/250
+Epoch 59 Training Results:
+  - Total Loss: 5.661173
+  - FIDI Loss: 0.280794 × 0.42
+  - CE Loss: 5.814139 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 60/250
+--------------------------------------------------
+Starting epoch 60/250
+Epoch 60 Training Results:
+  - Total Loss: 5.641397
+  - FIDI Loss: 0.270042 × 0.42
+  - CE Loss: 5.802392 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Saving models at epoch 60...
+PyTorch model saved: weights/checkpoint_epoch_60.pth
+TorchScript model saved: weights/checkpoint_epoch_60.pt
+Model saving completed for epoch 60
+
+Epoch 61/250
+--------------------------------------------------
+Starting epoch 61/250
+Epoch 61 Training Results:
+  - Total Loss: 5.648610
+  - FIDI Loss: 0.278885 × 0.42
+  - CE Loss: 5.810376 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 62/250
+--------------------------------------------------
+Starting epoch 62/250
+Epoch 62 Training Results:
+  - Total Loss: 5.643500
+  - FIDI Loss: 0.272046 × 0.42
+  - CE Loss: 5.812339 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 63/250
+--------------------------------------------------
+Starting epoch 63/250
+Epoch 63 Training Results:
+  - Total Loss: 5.629935
+  - FIDI Loss: 0.276158 × 0.42
+  - CE Loss: 5.800551 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 64/250
+--------------------------------------------------
+Starting epoch 64/250
+Epoch 64 Training Results:
+  - Total Loss: 5.632672
+  - FIDI Loss: 0.276985 × 0.43
+  - CE Loss: 5.807368 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 65/250
+--------------------------------------------------
+Starting epoch 65/250
+Epoch 65 Training Results:
+  - Total Loss: 5.618539
+  - FIDI Loss: 0.267305 × 0.43
+  - CE Loss: 5.801152 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 66/250
+--------------------------------------------------
+Starting epoch 66/250
+Epoch 66 Training Results:
+  - Total Loss: 5.606647
+  - FIDI Loss: 0.263795 × 0.43
+  - CE Loss: 5.794531 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 67/250
+--------------------------------------------------
+Starting epoch 67/250
+Epoch 67 Training Results:
+  - Total Loss: 5.618416
+  - FIDI Loss: 0.271666 × 0.43
+  - CE Loss: 5.807703 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 68/250
+--------------------------------------------------
+Starting epoch 68/250
+Epoch 68 Training Results:
+  - Total Loss: 5.624487
+  - FIDI Loss: 0.278354 × 0.43
+  - CE Loss: 5.815386 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 69/250
+--------------------------------------------------
+Starting epoch 69/250
+Epoch 69 Training Results:
+  - Total Loss: 5.609464
+  - FIDI Loss: 0.272181 × 0.44
+  - CE Loss: 5.806676 × 0.95
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 70/250
+--------------------------------------------------
+Starting epoch 70/250
+Epoch 70 Training Results:
+  - Total Loss: 5.609419
+  - FIDI Loss: 0.275391 × 0.44
+  - CE Loss: 5.809481 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Saving models at epoch 70...
+PyTorch model saved: weights/checkpoint_epoch_70.pth
+TorchScript model saved: weights/checkpoint_epoch_70.pt
+Model saving completed for epoch 70
+
+Epoch 71/250
+--------------------------------------------------
+Starting epoch 71/250
+Epoch 71 Training Results:
+  - Total Loss: 5.609109
+  - FIDI Loss: 0.276290 × 0.44
+  - CE Loss: 5.813073 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 72/250
+--------------------------------------------------
+Starting epoch 72/250
+Epoch 72 Training Results:
+  - Total Loss: 5.591658
+  - FIDI Loss: 0.265605 × 0.44
+  - CE Loss: 5.803924 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 73/250
+--------------------------------------------------
+Starting epoch 73/250
+Epoch 73 Training Results:
+  - Total Loss: 5.580064
+  - FIDI Loss: 0.265092 × 0.44
+  - CE Loss: 5.796226 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 74/250
+--------------------------------------------------
+Starting epoch 74/250
+Epoch 74 Training Results:
+  - Total Loss: 5.589589
+  - FIDI Loss: 0.267493 × 0.45
+  - CE Loss: 5.809565 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 75/250
+--------------------------------------------------
+Starting epoch 75/250
+Epoch 75 Training Results:
+  - Total Loss: 5.576058
+  - FIDI Loss: 0.263746 × 0.45
+  - CE Loss: 5.801339 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 76/250
+--------------------------------------------------
+Starting epoch 76/250
+Epoch 76 Training Results:
+  - Total Loss: 5.584033
+  - FIDI Loss: 0.272917 × 0.45
+  - CE Loss: 5.809809 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 77/250
+--------------------------------------------------
+Starting epoch 77/250
+Epoch 77 Training Results:
+  - Total Loss: 5.567599
+  - FIDI Loss: 0.264461 × 0.45
+  - CE Loss: 5.800748 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 78/250
+--------------------------------------------------
+Starting epoch 78/250
+Epoch 78 Training Results:
+  - Total Loss: 5.572254
+  - FIDI Loss: 0.270827 × 0.45
+  - CE Loss: 5.807011 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 79/250
+--------------------------------------------------
+Starting epoch 79/250
+Epoch 79 Training Results:
+  - Total Loss: 5.577631
+  - FIDI Loss: 0.272187 × 0.46
+  - CE Loss: 5.816461 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Epoch 80/250
+--------------------------------------------------
+Starting epoch 80/250
+Epoch 80 Training Results:
+  - Total Loss: 5.567567
+  - FIDI Loss: 0.267747 × 0.46
+  - CE Loss: 5.812275 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000023
+
+Saving models at epoch 80...
+PyTorch model saved: weights/checkpoint_epoch_80.pth
+TorchScript model saved: weights/checkpoint_epoch_80.pt
+Model saving completed for epoch 80
+
+Epoch 81/250
+--------------------------------------------------
+Starting epoch 81/250
+Epoch 81 Training Results:
+  - Total Loss: 5.546260
+  - FIDI Loss: 0.260288 × 0.46
+  - CE Loss: 5.797573 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 82/250
+--------------------------------------------------
+Starting epoch 82/250
+Epoch 82 Training Results:
+  - Total Loss: 5.554852
+  - FIDI Loss: 0.264983 × 0.46
+  - CE Loss: 5.808843 × 0.94
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 83/250
+--------------------------------------------------
+Starting epoch 83/250
+Epoch 83 Training Results:
+  - Total Loss: 5.535620
+  - FIDI Loss: 0.258248 × 0.46
+  - CE Loss: 5.796011 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 84/250
+--------------------------------------------------
+Starting epoch 84/250
+Epoch 84 Training Results:
+  - Total Loss: 5.540047
+  - FIDI Loss: 0.262833 × 0.47
+  - CE Loss: 5.802878 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 85/250
+--------------------------------------------------
+Starting epoch 85/250
+Epoch 85 Training Results:
+  - Total Loss: 5.530563
+  - FIDI Loss: 0.262417 × 0.47
+  - CE Loss: 5.797333 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 86/250
+--------------------------------------------------
+Starting epoch 86/250
+Epoch 86 Training Results:
+  - Total Loss: 5.536180
+  - FIDI Loss: 0.270450 × 0.47
+  - CE Loss: 5.803722 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 87/250
+--------------------------------------------------
+Starting epoch 87/250
+Epoch 87 Training Results:
+  - Total Loss: 5.529883
+  - FIDI Loss: 0.267984 × 0.47
+  - CE Loss: 5.802615 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 88/250
+--------------------------------------------------
+Starting epoch 88/250
+Epoch 88 Training Results:
+  - Total Loss: 5.526287
+  - FIDI Loss: 0.266421 × 0.47
+  - CE Loss: 5.803959 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 89/250
+--------------------------------------------------
+Starting epoch 89/250
+Epoch 89 Training Results:
+  - Total Loss: 5.521567
+  - FIDI Loss: 0.265806 × 0.48
+  - CE Loss: 5.803618 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 90/250
+--------------------------------------------------
+Starting epoch 90/250
+Epoch 90 Training Results:
+  - Total Loss: 5.518052
+  - FIDI Loss: 0.270140 × 0.48
+  - CE Loss: 5.802030 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Saving models at epoch 90...
+PyTorch model saved: weights/checkpoint_epoch_90.pth
+TorchScript model saved: weights/checkpoint_epoch_90.pt
+Model saving completed for epoch 90
+
+Epoch 91/250
+--------------------------------------------------
+Starting epoch 91/250
+Epoch 91 Training Results:
+  - Total Loss: 5.503355
+  - FIDI Loss: 0.261895 × 0.48
+  - CE Loss: 5.794877 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 92/250
+--------------------------------------------------
+Starting epoch 92/250
+Epoch 92 Training Results:
+  - Total Loss: 5.509645
+  - FIDI Loss: 0.268862 × 0.48
+  - CE Loss: 5.802474 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 93/250
+--------------------------------------------------
+Starting epoch 93/250
+Epoch 93 Training Results:
+  - Total Loss: 5.493439
+  - FIDI Loss: 0.256285 × 0.48
+  - CE Loss: 5.795982 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 94/250
+--------------------------------------------------
+Starting epoch 94/250
+Epoch 94 Training Results:
+  - Total Loss: 5.501120
+  - FIDI Loss: 0.265978 × 0.49
+  - CE Loss: 5.803647 × 0.93
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 95/250
+--------------------------------------------------
+Starting epoch 95/250
+Epoch 95 Training Results:
+  - Total Loss: 5.491132
+  - FIDI Loss: 0.268402 × 0.49
+  - CE Loss: 5.796012 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 96/250
+--------------------------------------------------
+Starting epoch 96/250
+Epoch 96 Training Results:
+  - Total Loss: 5.486475
+  - FIDI Loss: 0.258510 × 0.49
+  - CE Loss: 5.800655 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 97/250
+--------------------------------------------------
+Starting epoch 97/250
+Epoch 97 Training Results:
+  - Total Loss: 5.489918
+  - FIDI Loss: 0.263454 × 0.49
+  - CE Loss: 5.806216 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 98/250
+--------------------------------------------------
+Starting epoch 98/250
+Epoch 98 Training Results:
+  - Total Loss: 5.493107
+  - FIDI Loss: 0.268670 × 0.49
+  - CE Loss: 5.811345 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 99/250
+--------------------------------------------------
+Starting epoch 99/250
+Epoch 99 Training Results:
+  - Total Loss: 5.479126
+  - FIDI Loss: 0.260950 × 0.50
+  - CE Loss: 5.804791 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Epoch 100/250
+--------------------------------------------------
+Starting epoch 100/250
+Epoch 100 Training Results:
+  - Total Loss: 5.472418
+  - FIDI Loss: 0.261246 × 0.50
+  - CE Loss: 5.801822 × 0.92
+  - Semantic Loss: 0.000000 × 0.50
+Evaluating...
+Evaluation completed in 70.16 seconds
+Rank-1: 0.4670, Rank-3: 0.6482, Rank-5: 0.7227, mAP: 0.3084
+Epoch 100 Evaluation Results:
+  - Rank-1 Accuracy: 0.4670
+  - Rank-3 Accuracy: 0.6482
+  - Rank-5 Accuracy: 0.7227
+  - mAP: 0.3084
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000002
+
+Saving models at epoch 100...
+PyTorch model saved: weights/checkpoint_epoch_100.pth
+TorchScript model saved: weights/checkpoint_epoch_100.pt
+Model saving completed for epoch 100
+
+Epoch 101/250
+--------------------------------------------------
+Starting epoch 101/250
+Epoch 101 Training Results:
+  - Total Loss: 6.153249
+  - FIDI Loss: 0.250675 × 0.50
+  - CE Loss: 5.798695 × 0.92
+  - Semantic Loss: 1.386223 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 102/250
+--------------------------------------------------
+Starting epoch 102/250
+Epoch 102 Training Results:
+  - Total Loss: 6.148840
+  - FIDI Loss: 0.249832 × 0.50
+  - CE Loss: 5.798908 × 0.92
+  - Semantic Loss: 1.386136 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 103/250
+--------------------------------------------------
+Starting epoch 103/250
+Epoch 103 Training Results:
+  - Total Loss: 6.145792
+  - FIDI Loss: 0.256555 × 0.50
+  - CE Loss: 5.796439 × 0.92
+  - Semantic Loss: 1.386077 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 104/250
+--------------------------------------------------
+Starting epoch 104/250
+Epoch 104 Training Results:
+  - Total Loss: 6.136654
+  - FIDI Loss: 0.249291 × 0.51
+  - CE Loss: 5.795009 × 0.92
+  - Semantic Loss: 1.386026 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 105/250
+--------------------------------------------------
+Starting epoch 105/250
+Epoch 105 Training Results:
+  - Total Loss: 6.144113
+  - FIDI Loss: 0.257687 × 0.51
+  - CE Loss: 5.803029 × 0.92
+  - Semantic Loss: 1.385981 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 106/250
+--------------------------------------------------
+Starting epoch 106/250
+Epoch 106 Training Results:
+  - Total Loss: 6.134660
+  - FIDI Loss: 0.249912 × 0.51
+  - CE Loss: 5.801566 × 0.92
+  - Semantic Loss: 1.385941 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 107/250
+--------------------------------------------------
+Starting epoch 107/250
+Epoch 107 Training Results:
+  - Total Loss: 6.125533
+  - FIDI Loss: 0.254529 × 0.51
+  - CE Loss: 5.793559 × 0.92
+  - Semantic Loss: 1.385900 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 108/250
+--------------------------------------------------
+Starting epoch 108/250
+Epoch 108 Training Results:
+  - Total Loss: 6.112431
+  - FIDI Loss: 0.245391 × 0.51
+  - CE Loss: 5.788899 × 0.91
+  - Semantic Loss: 1.385861 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 109/250
+--------------------------------------------------
+Starting epoch 109/250
+Epoch 109 Training Results:
+  - Total Loss: 6.118599
+  - FIDI Loss: 0.254763 × 0.52
+  - CE Loss: 5.794910 × 0.91
+  - Semantic Loss: 1.385822 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 110/250
+--------------------------------------------------
+Starting epoch 110/250
+Epoch 110 Training Results:
+  - Total Loss: 6.126697
+  - FIDI Loss: 0.261766 × 0.52
+  - CE Loss: 5.804347 × 0.91
+  - Semantic Loss: 1.385787 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 110...
+PyTorch model saved: weights/checkpoint_epoch_110.pth
+TorchScript model saved: weights/checkpoint_epoch_110.pt
+Model saving completed for epoch 110
+
+Epoch 111/250
+--------------------------------------------------
+Starting epoch 111/250
+Epoch 111 Training Results:
+  - Total Loss: 6.111444
+  - FIDI Loss: 0.257618 × 0.52
+  - CE Loss: 5.794525 × 0.91
+  - Semantic Loss: 1.385752 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 112/250
+--------------------------------------------------
+Starting epoch 112/250
+Epoch 112 Training Results:
+  - Total Loss: 6.116174
+  - FIDI Loss: 0.263508 × 0.52
+  - CE Loss: 5.800882 × 0.91
+  - Semantic Loss: 1.385718 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 113/250
+--------------------------------------------------
+Starting epoch 113/250
+Epoch 113 Training Results:
+  - Total Loss: 6.104518
+  - FIDI Loss: 0.255838 × 0.52
+  - CE Loss: 5.797032 × 0.91
+  - Semantic Loss: 1.385682 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 114/250
+--------------------------------------------------
+Starting epoch 114/250
+Epoch 114 Training Results:
+  - Total Loss: 6.101641
+  - FIDI Loss: 0.258850 × 0.53
+  - CE Loss: 5.796682 × 0.91
+  - Semantic Loss: 1.385649 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 115/250
+--------------------------------------------------
+Starting epoch 115/250
+Epoch 115 Training Results:
+  - Total Loss: 6.089957
+  - FIDI Loss: 0.249229 × 0.53
+  - CE Loss: 5.793965 × 0.91
+  - Semantic Loss: 1.385617 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 116/250
+--------------------------------------------------
+Starting epoch 116/250
+Epoch 116 Training Results:
+  - Total Loss: 6.089441
+  - FIDI Loss: 0.252008 × 0.53
+  - CE Loss: 5.796351 × 0.91
+  - Semantic Loss: 1.385581 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 117/250
+--------------------------------------------------
+Starting epoch 117/250
+Epoch 117 Training Results:
+  - Total Loss: 6.077211
+  - FIDI Loss: 0.242934 × 0.53
+  - CE Loss: 5.792764 × 0.91
+  - Semantic Loss: 1.385550 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 118/250
+--------------------------------------------------
+Starting epoch 118/250
+Epoch 118 Training Results:
+  - Total Loss: 6.080926
+  - FIDI Loss: 0.253758 × 0.53
+  - CE Loss: 5.795081 × 0.91
+  - Semantic Loss: 1.385515 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 119/250
+--------------------------------------------------
+Starting epoch 119/250
+Epoch 119 Training Results:
+  - Total Loss: 6.080582
+  - FIDI Loss: 0.257970 × 0.54
+  - CE Loss: 5.796785 × 0.91
+  - Semantic Loss: 1.385482 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 120/250
+--------------------------------------------------
+Starting epoch 120/250
+Epoch 120 Training Results:
+  - Total Loss: 6.082769
+  - FIDI Loss: 0.260889 × 0.54
+  - CE Loss: 5.802041 × 0.90
+  - Semantic Loss: 1.385448 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 120...
+PyTorch model saved: weights/checkpoint_epoch_120.pth
+TorchScript model saved: weights/checkpoint_epoch_120.pt
+Model saving completed for epoch 120
+
+Epoch 121/250
+--------------------------------------------------
+Starting epoch 121/250
+Epoch 121 Training Results:
+  - Total Loss: 6.063150
+  - FIDI Loss: 0.247394 × 0.54
+  - CE Loss: 5.792966 × 0.90
+  - Semantic Loss: 1.385431 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 122/250
+--------------------------------------------------
+Starting epoch 122/250
+Epoch 122 Training Results:
+  - Total Loss: 6.061417
+  - FIDI Loss: 0.245821 × 0.54
+  - CE Loss: 5.796575 × 0.90
+  - Semantic Loss: 1.385430 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 123/250
+--------------------------------------------------
+Starting epoch 123/250
+Epoch 123 Training Results:
+  - Total Loss: 6.059291
+  - FIDI Loss: 0.248246 × 0.54
+  - CE Loss: 5.797354 × 0.90
+  - Semantic Loss: 1.385425 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 124/250
+--------------------------------------------------
+Starting epoch 124/250
+Epoch 124 Training Results:
+  - Total Loss: 6.053982
+  - FIDI Loss: 0.247759 × 0.55
+  - CE Loss: 5.796356 × 0.90
+  - Semantic Loss: 1.385422 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 125/250
+--------------------------------------------------
+Starting epoch 125/250
+Epoch 125 Training Results:
+  - Total Loss: 6.058733
+  - FIDI Loss: 0.258797 × 0.55
+  - CE Loss: 5.799514 × 0.90
+  - Semantic Loss: 1.385419 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 126/250
+--------------------------------------------------
+Starting epoch 126/250
+Epoch 126 Training Results:
+  - Total Loss: 6.050145
+  - FIDI Loss: 0.252934 × 0.55
+  - CE Loss: 5.798135 × 0.90
+  - Semantic Loss: 1.385419 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 127/250
+--------------------------------------------------
+Starting epoch 127/250
+Epoch 127 Training Results:
+  - Total Loss: 6.045267
+  - FIDI Loss: 0.248985 × 0.55
+  - CE Loss: 5.799734 × 0.90
+  - Semantic Loss: 1.385413 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 128/250
+--------------------------------------------------
+Starting epoch 128/250
+Epoch 128 Training Results:
+  - Total Loss: 6.039267
+  - FIDI Loss: 0.252079 × 0.55
+  - CE Loss: 5.795761 × 0.90
+  - Semantic Loss: 1.385407 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 129/250
+--------------------------------------------------
+Starting epoch 129/250
+Epoch 129 Training Results:
+  - Total Loss: 6.031595
+  - FIDI Loss: 0.252560 × 0.56
+  - CE Loss: 5.791520 × 0.90
+  - Semantic Loss: 1.385406 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 130/250
+--------------------------------------------------
+Starting epoch 130/250
+Epoch 130 Training Results:
+  - Total Loss: 6.036389
+  - FIDI Loss: 0.255455 × 0.56
+  - CE Loss: 5.799671 × 0.90
+  - Semantic Loss: 1.385402 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 130...
+PyTorch model saved: weights/checkpoint_epoch_130.pth
+TorchScript model saved: weights/checkpoint_epoch_130.pt
+Model saving completed for epoch 130
+
+Epoch 131/250
+--------------------------------------------------
+Starting epoch 131/250
+Epoch 131 Training Results:
+  - Total Loss: 6.026278
+  - FIDI Loss: 0.249551 × 0.56
+  - CE Loss: 5.796686 × 0.90
+  - Semantic Loss: 1.385397 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 132/250
+--------------------------------------------------
+Starting epoch 132/250
+Epoch 132 Training Results:
+  - Total Loss: 6.016865
+  - FIDI Loss: 0.247720 × 0.56
+  - CE Loss: 5.791943 × 0.90
+  - Semantic Loss: 1.385397 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 133/250
+--------------------------------------------------
+Starting epoch 133/250
+Epoch 133 Training Results:
+  - Total Loss: 6.025757
+  - FIDI Loss: 0.252920 × 0.56
+  - CE Loss: 5.803236 × 0.89
+  - Semantic Loss: 1.385392 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 134/250
+--------------------------------------------------
+Starting epoch 134/250
+Epoch 134 Training Results:
+  - Total Loss: 6.026427
+  - FIDI Loss: 0.261919 × 0.57
+  - CE Loss: 5.802917 × 0.89
+  - Semantic Loss: 1.385390 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 135/250
+--------------------------------------------------
+Starting epoch 135/250
+Epoch 135 Training Results:
+  - Total Loss: 6.011828
+  - FIDI Loss: 0.254606 × 0.57
+  - CE Loss: 5.795831 × 0.89
+  - Semantic Loss: 1.385388 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 136/250
+--------------------------------------------------
+Starting epoch 136/250
+Epoch 136 Training Results:
+  - Total Loss: 6.012174
+  - FIDI Loss: 0.259014 × 0.57
+  - CE Loss: 5.798032 × 0.89
+  - Semantic Loss: 1.385382 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 137/250
+--------------------------------------------------
+Starting epoch 137/250
+Epoch 137 Training Results:
+  - Total Loss: 6.008732
+  - FIDI Loss: 0.254645 × 0.57
+  - CE Loss: 5.801599 × 0.89
+  - Semantic Loss: 1.385380 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 138/250
+--------------------------------------------------
+Starting epoch 138/250
+Epoch 138 Training Results:
+  - Total Loss: 6.009914
+  - FIDI Loss: 0.258856 × 0.57
+  - CE Loss: 5.804855 × 0.89
+  - Semantic Loss: 1.385376 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 139/250
+--------------------------------------------------
+Starting epoch 139/250
+Epoch 139 Training Results:
+  - Total Loss: 5.994599
+  - FIDI Loss: 0.252263 × 0.58
+  - CE Loss: 5.796548 × 0.89
+  - Semantic Loss: 1.385374 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 140/250
+--------------------------------------------------
+Starting epoch 140/250
+Epoch 140 Training Results:
+  - Total Loss: 5.988088
+  - FIDI Loss: 0.252378 × 0.58
+  - CE Loss: 5.793799 × 0.89
+  - Semantic Loss: 1.385369 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 140...
+PyTorch model saved: weights/checkpoint_epoch_140.pth
+TorchScript model saved: weights/checkpoint_epoch_140.pt
+Model saving completed for epoch 140
+
+Epoch 141/250
+--------------------------------------------------
+Starting epoch 141/250
+Epoch 141 Training Results:
+  - Total Loss: 5.982760
+  - FIDI Loss: 0.249500 × 0.58
+  - CE Loss: 5.794329 × 0.89
+  - Semantic Loss: 1.385371 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 142/250
+--------------------------------------------------
+Starting epoch 142/250
+Epoch 142 Training Results:
+  - Total Loss: 5.987909
+  - FIDI Loss: 0.253357 × 0.58
+  - CE Loss: 5.802268 × 0.89
+  - Semantic Loss: 1.385366 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 143/250
+--------------------------------------------------
+Starting epoch 143/250
+Epoch 143 Training Results:
+  - Total Loss: 5.973962
+  - FIDI Loss: 0.248086 × 0.58
+  - CE Loss: 5.794675 × 0.89
+  - Semantic Loss: 1.385360 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 144/250
+--------------------------------------------------
+Starting epoch 144/250
+Epoch 144 Training Results:
+  - Total Loss: 5.978518
+  - FIDI Loss: 0.255388 × 0.59
+  - CE Loss: 5.799663 × 0.89
+  - Semantic Loss: 1.385358 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 145/250
+--------------------------------------------------
+Starting epoch 145/250
+Epoch 145 Training Results:
+  - Total Loss: 5.972621
+  - FIDI Loss: 0.251940 × 0.59
+  - CE Loss: 5.799958 × 0.88
+  - Semantic Loss: 1.385354 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 146/250
+--------------------------------------------------
+Starting epoch 146/250
+Epoch 146 Training Results:
+  - Total Loss: 5.972896
+  - FIDI Loss: 0.257985 × 0.59
+  - CE Loss: 5.800917 × 0.88
+  - Semantic Loss: 1.385350 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 147/250
+--------------------------------------------------
+Starting epoch 147/250
+Epoch 147 Training Results:
+  - Total Loss: 5.950354
+  - FIDI Loss: 0.244979 × 0.59
+  - CE Loss: 5.788781 × 0.88
+  - Semantic Loss: 1.385351 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 148/250
+--------------------------------------------------
+Starting epoch 148/250
+Epoch 148 Training Results:
+  - Total Loss: 5.962453
+  - FIDI Loss: 0.255399 × 0.59
+  - CE Loss: 5.800173 × 0.88
+  - Semantic Loss: 1.385346 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 149/250
+--------------------------------------------------
+Starting epoch 149/250
+Epoch 149 Training Results:
+  - Total Loss: 5.949552
+  - FIDI Loss: 0.249293 × 0.60
+  - CE Loss: 5.794355 × 0.88
+  - Semantic Loss: 1.385341 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 150/250
+--------------------------------------------------
+Starting epoch 150/250
+Epoch 150 Training Results:
+  - Total Loss: 5.941067
+  - FIDI Loss: 0.245681 × 0.60
+  - CE Loss: 5.791872 × 0.88
+  - Semantic Loss: 1.385337 × 0.50
+Evaluating...
+Evaluation completed in 69.90 seconds
+Rank-1: 0.4751, Rank-3: 0.6508, Rank-5: 0.7185, mAP: 0.3116
+Epoch 150 Evaluation Results:
+  - Rank-1 Accuracy: 0.4751
+  - Rank-3 Accuracy: 0.6508
+  - Rank-5 Accuracy: 0.7185
+  - mAP: 0.3116
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 150...
+PyTorch model saved: weights/checkpoint_epoch_150.pth
+TorchScript model saved: weights/checkpoint_epoch_150.pt
+Model saving completed for epoch 150
+
+Epoch 151/250
+--------------------------------------------------
+Starting epoch 151/250
+Epoch 151 Training Results:
+  - Total Loss: 5.944295
+  - FIDI Loss: 0.251174 × 0.60
+  - CE Loss: 5.796503 × 0.88
+  - Semantic Loss: 1.385336 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 152/250
+--------------------------------------------------
+Starting epoch 152/250
+Epoch 152 Training Results:
+  - Total Loss: 5.935810
+  - FIDI Loss: 0.253143 × 0.60
+  - CE Loss: 5.790209 × 0.88
+  - Semantic Loss: 1.385334 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 153/250
+--------------------------------------------------
+Starting epoch 153/250
+Epoch 153 Training Results:
+  - Total Loss: 5.927130
+  - FIDI Loss: 0.248964 × 0.60
+  - CE Loss: 5.787899 × 0.88
+  - Semantic Loss: 1.385330 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 154/250
+--------------------------------------------------
+Starting epoch 154/250
+Epoch 154 Training Results:
+  - Total Loss: 5.929287
+  - FIDI Loss: 0.249566 × 0.61
+  - CE Loss: 5.794652 × 0.88
+  - Semantic Loss: 1.385326 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 155/250
+--------------------------------------------------
+Starting epoch 155/250
+Epoch 155 Training Results:
+  - Total Loss: 5.933682
+  - FIDI Loss: 0.250869 × 0.61
+  - CE Loss: 5.803482 × 0.88
+  - Semantic Loss: 1.385322 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 156/250
+--------------------------------------------------
+Starting epoch 156/250
+Epoch 156 Training Results:
+  - Total Loss: 5.927887
+  - FIDI Loss: 0.250123 × 0.61
+  - CE Loss: 5.802115 × 0.88
+  - Semantic Loss: 1.385320 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 157/250
+--------------------------------------------------
+Starting epoch 157/250
+Epoch 157 Training Results:
+  - Total Loss: 5.926828
+  - FIDI Loss: 0.253338 × 0.61
+  - CE Loss: 5.803391 × 0.88
+  - Semantic Loss: 1.385315 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 158/250
+--------------------------------------------------
+Starting epoch 158/250
+Epoch 158 Training Results:
+  - Total Loss: 5.910313
+  - FIDI Loss: 0.247969 × 0.61
+  - CE Loss: 5.793006 × 0.87
+  - Semantic Loss: 1.385311 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 159/250
+--------------------------------------------------
+Starting epoch 159/250
+Epoch 159 Training Results:
+  - Total Loss: 5.917359
+  - FIDI Loss: 0.254510 × 0.62
+  - CE Loss: 5.801196 × 0.87
+  - Semantic Loss: 1.385312 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 160/250
+--------------------------------------------------
+Starting epoch 160/250
+Epoch 160 Training Results:
+  - Total Loss: 5.905989
+  - FIDI Loss: 0.247098 × 0.62
+  - CE Loss: 5.798155 × 0.87
+  - Semantic Loss: 1.385304 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 160...
+PyTorch model saved: weights/checkpoint_epoch_160.pth
+TorchScript model saved: weights/checkpoint_epoch_160.pt
+Model saving completed for epoch 160
+
+Epoch 161/250
+--------------------------------------------------
+Starting epoch 161/250
+Epoch 161 Training Results:
+  - Total Loss: 5.903292
+  - FIDI Loss: 0.254873 × 0.62
+  - CE Loss: 5.794287 × 0.87
+  - Semantic Loss: 1.385305 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 162/250
+--------------------------------------------------
+Starting epoch 162/250
+Epoch 162 Training Results:
+  - Total Loss: 5.891727
+  - FIDI Loss: 0.246369 × 0.62
+  - CE Loss: 5.791820 × 0.87
+  - Semantic Loss: 1.385303 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 163/250
+--------------------------------------------------
+Starting epoch 163/250
+Epoch 163 Training Results:
+  - Total Loss: 5.900772
+  - FIDI Loss: 0.254425 × 0.62
+  - CE Loss: 5.801193 × 0.87
+  - Semantic Loss: 1.385305 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 164/250
+--------------------------------------------------
+Starting epoch 164/250
+Epoch 164 Training Results:
+  - Total Loss: 5.885656
+  - FIDI Loss: 0.249346 × 0.63
+  - CE Loss: 5.792218 × 0.87
+  - Semantic Loss: 1.385305 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 165/250
+--------------------------------------------------
+Starting epoch 165/250
+Epoch 165 Training Results:
+  - Total Loss: 5.883859
+  - FIDI Loss: 0.247201 × 0.63
+  - CE Loss: 5.796461 × 0.87
+  - Semantic Loss: 1.385305 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 166/250
+--------------------------------------------------
+Starting epoch 166/250
+Epoch 166 Training Results:
+  - Total Loss: 5.886344
+  - FIDI Loss: 0.249215 × 0.63
+  - CE Loss: 5.802636 × 0.87
+  - Semantic Loss: 1.385302 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 167/250
+--------------------------------------------------
+Starting epoch 167/250
+Epoch 167 Training Results:
+  - Total Loss: 5.892606
+  - FIDI Loss: 0.264179 × 0.63
+  - CE Loss: 5.803729 × 0.87
+  - Semantic Loss: 1.385301 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 168/250
+--------------------------------------------------
+Starting epoch 168/250
+Epoch 168 Training Results:
+  - Total Loss: 5.881391
+  - FIDI Loss: 0.255993 × 0.63
+  - CE Loss: 5.801525 × 0.87
+  - Semantic Loss: 1.385300 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 169/250
+--------------------------------------------------
+Starting epoch 169/250
+Epoch 169 Training Results:
+  - Total Loss: 5.874145
+  - FIDI Loss: 0.253868 × 0.64
+  - CE Loss: 5.799485 × 0.87
+  - Semantic Loss: 1.385302 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 170/250
+--------------------------------------------------
+Starting epoch 170/250
+Epoch 170 Training Results:
+  - Total Loss: 5.871248
+  - FIDI Loss: 0.252877 × 0.64
+  - CE Loss: 5.801645 × 0.86
+  - Semantic Loss: 1.385301 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 170...
+PyTorch model saved: weights/checkpoint_epoch_170.pth
+TorchScript model saved: weights/checkpoint_epoch_170.pt
+Model saving completed for epoch 170
+
+Epoch 171/250
+--------------------------------------------------
+Starting epoch 171/250
+Epoch 171 Training Results:
+  - Total Loss: 5.854250
+  - FIDI Loss: 0.246875 × 0.64
+  - CE Loss: 5.791202 × 0.86
+  - Semantic Loss: 1.385301 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 172/250
+--------------------------------------------------
+Starting epoch 172/250
+Epoch 172 Training Results:
+  - Total Loss: 5.852363
+  - FIDI Loss: 0.247847 × 0.64
+  - CE Loss: 5.793091 × 0.86
+  - Semantic Loss: 1.385299 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 173/250
+--------------------------------------------------
+Starting epoch 173/250
+Epoch 173 Training Results:
+  - Total Loss: 5.863960
+  - FIDI Loss: 0.260993 × 0.64
+  - CE Loss: 5.801520 × 0.86
+  - Semantic Loss: 1.385300 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 174/250
+--------------------------------------------------
+Starting epoch 174/250
+Epoch 174 Training Results:
+  - Total Loss: 5.845524
+  - FIDI Loss: 0.244204 × 0.65
+  - CE Loss: 5.797493 × 0.86
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 175/250
+--------------------------------------------------
+Starting epoch 175/250
+Epoch 175 Training Results:
+  - Total Loss: 5.851571
+  - FIDI Loss: 0.255827 × 0.65
+  - CE Loss: 5.800588 × 0.86
+  - Semantic Loss: 1.385298 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 176/250
+--------------------------------------------------
+Starting epoch 176/250
+Epoch 176 Training Results:
+  - Total Loss: 5.832259
+  - FIDI Loss: 0.245086 × 0.65
+  - CE Loss: 5.791050 × 0.86
+  - Semantic Loss: 1.385300 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 177/250
+--------------------------------------------------
+Starting epoch 177/250
+Epoch 177 Training Results:
+  - Total Loss: 5.839768
+  - FIDI Loss: 0.247594 × 0.65
+  - CE Loss: 5.802709 × 0.86
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 178/250
+--------------------------------------------------
+Starting epoch 178/250
+Epoch 178 Training Results:
+  - Total Loss: 5.834266
+  - FIDI Loss: 0.250653 × 0.65
+  - CE Loss: 5.798800 × 0.86
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 179/250
+--------------------------------------------------
+Starting epoch 179/250
+Epoch 179 Training Results:
+  - Total Loss: 5.834017
+  - FIDI Loss: 0.246339 × 0.66
+  - CE Loss: 5.806634 × 0.86
+  - Semantic Loss: 1.385299 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 180/250
+--------------------------------------------------
+Starting epoch 180/250
+Epoch 180 Training Results:
+  - Total Loss: 5.826490
+  - FIDI Loss: 0.251215 × 0.66
+  - CE Loss: 5.798950 × 0.86
+  - Semantic Loss: 1.385299 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 180...
+PyTorch model saved: weights/checkpoint_epoch_180.pth
+TorchScript model saved: weights/checkpoint_epoch_180.pt
+Model saving completed for epoch 180
+
+Epoch 181/250
+--------------------------------------------------
+Starting epoch 181/250
+Epoch 181 Training Results:
+  - Total Loss: 5.820576
+  - FIDI Loss: 0.252236 × 0.66
+  - CE Loss: 5.796089 × 0.86
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 182/250
+--------------------------------------------------
+Starting epoch 182/250
+Epoch 182 Training Results:
+  - Total Loss: 5.814259
+  - FIDI Loss: 0.248045 × 0.66
+  - CE Loss: 5.796779 × 0.86
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 183/250
+--------------------------------------------------
+Starting epoch 183/250
+Epoch 183 Training Results:
+  - Total Loss: 5.818933
+  - FIDI Loss: 0.255840 × 0.66
+  - CE Loss: 5.801038 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 184/250
+--------------------------------------------------
+Starting epoch 184/250
+Epoch 184 Training Results:
+  - Total Loss: 5.803871
+  - FIDI Loss: 0.251998 × 0.67
+  - CE Loss: 5.791225 × 0.85
+  - Semantic Loss: 1.385301 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 185/250
+--------------------------------------------------
+Starting epoch 185/250
+Epoch 185 Training Results:
+  - Total Loss: 5.804145
+  - FIDI Loss: 0.251057 × 0.67
+  - CE Loss: 5.797128 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 186/250
+--------------------------------------------------
+Starting epoch 186/250
+Epoch 186 Training Results:
+  - Total Loss: 5.807255
+  - FIDI Loss: 0.255805 × 0.67
+  - CE Loss: 5.801899 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 187/250
+--------------------------------------------------
+Starting epoch 187/250
+Epoch 187 Training Results:
+  - Total Loss: 5.793552
+  - FIDI Loss: 0.251789 × 0.67
+  - CE Loss: 5.793820 × 0.85
+  - Semantic Loss: 1.385300 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 188/250
+--------------------------------------------------
+Starting epoch 188/250
+Epoch 188 Training Results:
+  - Total Loss: 5.795976
+  - FIDI Loss: 0.252986 × 0.67
+  - CE Loss: 5.800583 × 0.85
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 189/250
+--------------------------------------------------
+Starting epoch 189/250
+Epoch 189 Training Results:
+  - Total Loss: 5.784626
+  - FIDI Loss: 0.250699 × 0.68
+  - CE Loss: 5.793909 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 190/250
+--------------------------------------------------
+Starting epoch 190/250
+Epoch 190 Training Results:
+  - Total Loss: 5.787378
+  - FIDI Loss: 0.254068 × 0.68
+  - CE Loss: 5.799330 × 0.85
+  - Semantic Loss: 1.385297 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 190...
+PyTorch model saved: weights/checkpoint_epoch_190.pth
+TorchScript model saved: weights/checkpoint_epoch_190.pt
+Model saving completed for epoch 190
+
+Epoch 191/250
+--------------------------------------------------
+Starting epoch 191/250
+Epoch 191 Training Results:
+  - Total Loss: 5.775455
+  - FIDI Loss: 0.246646 × 0.68
+  - CE Loss: 5.796095 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 192/250
+--------------------------------------------------
+Starting epoch 192/250
+Epoch 192 Training Results:
+  - Total Loss: 5.776043
+  - FIDI Loss: 0.252837 × 0.68
+  - CE Loss: 5.796695 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 193/250
+--------------------------------------------------
+Starting epoch 193/250
+Epoch 193 Training Results:
+  - Total Loss: 5.773789
+  - FIDI Loss: 0.253852 × 0.68
+  - CE Loss: 5.798094 × 0.85
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 194/250
+--------------------------------------------------
+Starting epoch 194/250
+Epoch 194 Training Results:
+  - Total Loss: 5.768849
+  - FIDI Loss: 0.255555 × 0.69
+  - CE Loss: 5.795757 × 0.85
+  - Semantic Loss: 1.385292 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 195/250
+--------------------------------------------------
+Starting epoch 195/250
+Epoch 195 Training Results:
+  - Total Loss: 5.763230
+  - FIDI Loss: 0.250209 × 0.69
+  - CE Loss: 5.798343 × 0.84
+  - Semantic Loss: 1.385293 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 196/250
+--------------------------------------------------
+Starting epoch 196/250
+Epoch 196 Training Results:
+  - Total Loss: 5.754424
+  - FIDI Loss: 0.249266 × 0.69
+  - CE Loss: 5.793582 × 0.84
+  - Semantic Loss: 1.385296 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 197/250
+--------------------------------------------------
+Starting epoch 197/250
+Epoch 197 Training Results:
+  - Total Loss: 5.761462
+  - FIDI Loss: 0.256679 × 0.69
+  - CE Loss: 5.800751 × 0.84
+  - Semantic Loss: 1.385294 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 198/250
+--------------------------------------------------
+Starting epoch 198/250
+Epoch 198 Training Results:
+  - Total Loss: 5.750665
+  - FIDI Loss: 0.251504 × 0.69
+  - CE Loss: 5.797099 × 0.84
+  - Semantic Loss: 1.385291 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 199/250
+--------------------------------------------------
+Starting epoch 199/250
+Epoch 199 Training Results:
+  - Total Loss: 5.756553
+  - FIDI Loss: 0.257014 × 0.70
+  - CE Loss: 5.804449 × 0.84
+  - Semantic Loss: 1.385293 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 200/250
+--------------------------------------------------
+Starting epoch 200/250
+Epoch 200 Training Results:
+  - Total Loss: 5.736810
+  - FIDI Loss: 0.249515 × 0.70
+  - CE Loss: 5.792106 × 0.84
+  - Semantic Loss: 1.385292 × 0.50
+Evaluating...
+Evaluation completed in 69.97 seconds
+Rank-1: 0.4780, Rank-3: 0.6410, Rank-5: 0.7173, mAP: 0.3102
+Epoch 200 Evaluation Results:
+  - Rank-1 Accuracy: 0.4780
+  - Rank-3 Accuracy: 0.6410
+  - Rank-5 Accuracy: 0.7173
+  - mAP: 0.3102
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Saving models at epoch 200...
+PyTorch model saved: weights/checkpoint_epoch_200.pth
+TorchScript model saved: weights/checkpoint_epoch_200.pt
+Model saving completed for epoch 200
+
+Epoch 201/250
+--------------------------------------------------
+Starting epoch 201/250
+Epoch 201 Training Results:
+  - Total Loss: 5.740497
+  - FIDI Loss: 0.255842 × 0.70
+  - CE Loss: 5.796145 × 0.84
+  - Semantic Loss: 1.385291 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 202/250
+--------------------------------------------------
+Starting epoch 202/250
+Epoch 202 Training Results:
+  - Total Loss: 5.731328
+  - FIDI Loss: 0.248753 × 0.70
+  - CE Loss: 5.796065 × 0.84
+  - Semantic Loss: 1.385291 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 203/250
+--------------------------------------------------
+Starting epoch 203/250
+Epoch 203 Training Results:
+  - Total Loss: 5.726523
+  - FIDI Loss: 0.253437 × 0.70
+  - CE Loss: 5.791337 × 0.84
+  - Semantic Loss: 1.385293 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 204/250
+--------------------------------------------------
+Starting epoch 204/250
+Epoch 204 Training Results:
+  - Total Loss: 5.731470
+  - FIDI Loss: 0.258057 × 0.71
+  - CE Loss: 5.798275 × 0.84
+  - Semantic Loss: 1.385294 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 205/250
+--------------------------------------------------
+Starting epoch 205/250
+Epoch 205 Training Results:
+  - Total Loss: 5.726143
+  - FIDI Loss: 0.250937 × 0.71
+  - CE Loss: 5.802861 × 0.84
+  - Semantic Loss: 1.385292 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 206/250
+--------------------------------------------------
+Starting epoch 206/250
+Epoch 206 Training Results:
+  - Total Loss: 5.712173
+  - FIDI Loss: 0.248575 × 0.71
+  - CE Loss: 5.793109 × 0.84
+  - Semantic Loss: 1.385291 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 207/250
+--------------------------------------------------
+Starting epoch 207/250
+Epoch 207 Training Results:
+  - Total Loss: 5.708860
+  - FIDI Loss: 0.248793 × 0.71
+  - CE Loss: 5.793911 × 0.84
+  - Semantic Loss: 1.385289 × 0.50
+Training plots updated: training_plots/training_losses.png
+Accuracy plot updated: training_plots/validation_accuracy.png
+Current Learning Rate: 0.000000
+
+Epoch 208/250
+--------------------------------------------------
+Starting epoch 208/250
