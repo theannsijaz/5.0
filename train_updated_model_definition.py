@@ -187,17 +187,17 @@ class SpatialSemanticClustering(nn.Module):
         self.num_semantic_parts = num_semantic_parts
         self.momentum = momentum
         
-        # Semantic head with dropout for robustness
+        # Memory-efficient semantic head with smaller intermediate dimensions
         self.semantic_head = nn.Sequential(
-            nn.Linear(feature_dim, feature_dim // 2),
-            nn.BatchNorm1d(feature_dim // 2),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
-            nn.Linear(feature_dim // 2, feature_dim // 4),
+            nn.Linear(feature_dim, feature_dim // 4),  # Reduced from //2 to //4
             nn.BatchNorm1d(feature_dim // 4),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
-            nn.Linear(feature_dim // 4, num_semantic_parts + 1)
+            nn.Dropout(0.2),  # Increased dropout for regularization
+            nn.Linear(feature_dim // 4, feature_dim // 8),  # Reduced from //4 to //8
+            nn.BatchNorm1d(feature_dim // 8),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(feature_dim // 8, num_semantic_parts + 1)
         )
         
         # Initialize weights properly
@@ -281,22 +281,58 @@ class SpatialSemanticClustering(nn.Module):
         spatial_labels_expanded = spatial_labels.unsqueeze(0).expand(B, -1, -1)  # [B, H, W]
         pseudo_labels = torch.where(fg_mask, spatial_labels_expanded, pseudo_labels)
         
-        # Flatten for classification
-        student_flat = student_features.permute(0, 2, 3, 1).reshape(-1, C)
-        labels_flat = pseudo_labels.reshape(-1)
+        # Memory-efficient semantic classification
+        # Instead of flattening entire feature map, process in chunks
         
-        # Semantic classification
-        semantic_logits = self.semantic_head(student_flat)
-        # Use label smoothing for better training stability
-        semantic_loss = F.cross_entropy(semantic_logits, labels_flat, 
-                                       reduction='mean', label_smoothing=0.1)
+        # Option 1: Use gradient checkpointing to save memory
+        semantic_loss = torch.utils.checkpoint.checkpoint(
+            self._compute_semantic_loss, 
+            student_features, 
+            pseudo_labels
+        )
         
         return {
             'semantic_loss': semantic_loss,
-            'pseudo_labels': pseudo_labels,
-            'foreground_mask': fg_mask,
-            'semantic_logits': semantic_logits.view(B, H, W, -1)
+            'pseudo_labels': pseudo_labels.detach(),  # Detach to save memory
+            'foreground_mask': fg_mask.detach(),      # Detach to save memory
+            'semantic_logits': None  # Don't store large tensors
         }
+    
+    def _compute_semantic_loss(self, student_features, pseudo_labels):
+        """Memory-efficient semantic loss computation"""
+        B, C, H, W = student_features.shape
+        
+        # Process in spatial chunks to reduce memory usage
+        chunk_size = max(1, (H * W) // 4)  # Process 1/4 of spatial locations at a time
+        total_loss = 0.0
+        total_pixels = 0
+        
+        # Flatten tensors
+        student_flat = student_features.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
+        labels_flat = pseudo_labels.reshape(-1)  # [B*H*W]
+        
+        # Process in chunks
+        for start_idx in range(0, student_flat.size(0), chunk_size):
+            end_idx = min(start_idx + chunk_size, student_flat.size(0))
+            
+            # Get chunk
+            chunk_features = student_flat[start_idx:end_idx]
+            chunk_labels = labels_flat[start_idx:end_idx]
+            
+            # Compute logits for chunk
+            chunk_logits = self.semantic_head(chunk_features)
+            
+            # Compute loss for chunk
+            chunk_loss = F.cross_entropy(chunk_logits, chunk_labels, 
+                                       reduction='sum', label_smoothing=0.1)
+            
+            total_loss += chunk_loss
+            total_pixels += chunk_features.size(0)
+            
+            # Clear intermediate tensors
+            del chunk_logits, chunk_features, chunk_labels
+        
+        return total_loss / total_pixels
 
 class SemanticController(nn.Module):
     """Improved semantic controller with better parameter handling."""
@@ -575,11 +611,12 @@ def create_solider_model(num_classes):
 
 class SOLIDERFIDITrainer:
     """
-    Fixed SOLIDER-enhanced FIDI trainer with better error handling.
+    Fixed SOLIDER-enhanced FIDI trainer with better error handling and memory optimization.
     """
     def __init__(self, model, num_classes, device='cuda', 
                  alpha=1.05, beta=0.5, lr=3.5e-4, weight_decay=5e-4,
-                 loss_strategy='adaptive', semantic_weight=0.5):
+                 loss_strategy='adaptive', semantic_weight=0.5, 
+                 memory_efficient=True):
         
         # Device setup with multi-GPU support
         if isinstance(device, (list, tuple)):
@@ -597,6 +634,7 @@ class SOLIDERFIDITrainer:
         self.ce_loss = nn.CrossEntropyLoss()
         self.loss_strategy = loss_strategy
         self.semantic_weight = semantic_weight
+        self.memory_efficient = memory_efficient
         
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), 
@@ -769,14 +807,19 @@ class SOLIDERFIDITrainer:
             # Get lambda value for this batch
             current_lambda = float(lambda_vals[batch_idx % len(lambda_vals)].item())
             
-            # Forward pass with semantic loss
-            # Remove try/except for better stability
+            # Memory-efficient forward pass with semantic loss
             actual_model = self.get_model()
+            
+            # Clear cache before forward pass to ensure maximum memory
+            if self.memory_efficient and hasattr(torch.cuda, 'empty_cache'):
+                if batch_idx % 5 == 0:  # Don't clear every batch for performance
+                    torch.cuda.empty_cache()
+            
             features, logits, semantic_output = actual_model(
                 images, lambda_val=current_lambda, return_semantic_loss=True
             )
             
-            # Extract semantic loss safely
+            # Extract semantic loss safely and clear semantic_output immediately
             if isinstance(semantic_output, dict) and 'semantic_loss' in semantic_output:
                 semantic_loss = semantic_output['semantic_loss']
                 # Ensure it's a scalar tensor
@@ -784,6 +827,9 @@ class SOLIDERFIDITrainer:
                     semantic_loss = semantic_loss.mean()
             else:
                 semantic_loss = torch.tensor(0.0, device=self.device, requires_grad=True)
+            
+            # Clear semantic output to free memory
+            del semantic_output
 
             
             # Compute losses
@@ -1455,7 +1501,8 @@ trainer = SOLIDERFIDITrainer(
     lr=lr,
     weight_decay=weight_decay,
     loss_strategy='progressive',
-    semantic_weight=0.5
+    semantic_weight=0.5,
+    memory_efficient=True  # Enable memory optimization
 )
 
 # Configure SOLIDER stage start (set to 0 for immediate SOLIDER, 100 for FIDI first)
