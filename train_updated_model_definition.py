@@ -864,16 +864,20 @@ class SOLIDERFIDITrainer:
                 images, lambda_val=current_lambda, return_semantic_loss=True, teacher_features=teacher_features
             )
 
-            # Compute semantic loss
+            # Compute semantic loss via model's clustering head
             semantic_loss = torch.tensor(0.0, device=self.device)
             if isinstance(semantic_output, dict):
-                semantic_loss = self._compute_semantic_loss(
-                    student_features=semantic_output.get('student_features', features),
-                    pseudo_labels=teacher_pseudo_labels,
-                    mask=None
-                )
-                if semantic_loss.dim() > 0:
-                    semantic_loss = semantic_loss.mean()
+                actual_model = self.get_model()
+                clustering = getattr(actual_model, 'semantic_clustering', None)
+                student_feats = semantic_output.get('student_features', features)
+                if (clustering is not None) and (teacher_pseudo_labels is not None) and (student_feats is not None):
+                    semantic_loss = clustering._compute_semantic_loss(
+                        student_features=student_feats,
+                        pseudo_labels=teacher_pseudo_labels,
+                        mask=None
+                    )
+                    if semantic_loss.dim() > 0:
+                        semantic_loss = semantic_loss.mean()
 
             # Losses
             fidi_loss = self.fidi_loss(features, labels)
