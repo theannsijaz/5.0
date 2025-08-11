@@ -1327,7 +1327,7 @@ if __name__ == "__main__":
             plt.legend()
             plt.grid(True, alpha=0.3)
         plt.tight_layout()
-            plt.savefig("training_plots/validation_accuracy.png", dpi=150, bbox_inches='tight', facecolor='white')
+        plt.savefig("training_plots/validation_accuracy.png", dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
         
     print("=" * 80)
