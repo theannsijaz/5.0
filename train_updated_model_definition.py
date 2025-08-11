@@ -765,16 +765,9 @@ class SOLIDERFIDITrainer:
         self.base_lr = config.learning_rate
         self.warmup_epochs = config.warmup_epochs
         
-        # SOLIDER stage settings
-        self.stage2_lr = config.stage2_learning_rate
-        self.stage2_freeze_epochs = config.stage2_freeze_epochs
-        self.stage2_backbone_frozen = False
-        self.stage2_frozen_until = None
-        
-        # Two-stage learning rate scheduler
-        # Step at middle of each stage
-        stage1_step = config.stage1_epochs // 2
-        stage2_step = config.stage1_epochs + (config.stage2_epochs // 2)
+        # Single-stage scheduler: step milestones at 1/3 and 2/3 of total epochs
+        stage1_step = max(1, config.total_epochs // 3)
+        stage2_step = max(stage1_step + 1, 2 * config.total_epochs // 3)
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
             self.optimizer,
             milestones=[stage1_step, stage2_step],
@@ -784,7 +777,7 @@ class SOLIDERFIDITrainer:
         # Training state
         self.loss_history = {'fidi': [], 'ce': [], 'semantic': []}
         self.best_mAP = 0.0
-        self.stage_switch_epoch = config.stage1_epochs
+        self.stage_switch_epoch = 0
         self.total_epochs = config.total_epochs
     
     def get_model(self):
@@ -826,94 +819,123 @@ class SOLIDERFIDITrainer:
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=40, gamma=0.1)
     
     def train_epoch(self, dataloader, epoch=0, total_epochs=120):
-        """
-        Fixed train_epoch method that handles both FIDI and SOLIDER stages.
-        """
-        # Determine training stage
-        if epoch < self.stage_switch_epoch:
-            return self._train_epoch_stage1(dataloader, epoch, total_epochs)
-        else:
-            if epoch == self.stage_switch_epoch:
-                print("=" * 50)
-                print("SWITCHING TO SOLIDER STAGE")
-                print("=" * 50)
-                # Freeze backbone for first few SOLIDER epochs
-                self._freeze_backbone(True)
-                self.stage2_frozen_until = epoch + self.stage2_freeze_epochs - 1
-                # Rebuild optimizer/scheduler with stage-2 LR
-                self._rebuild_optimizer_and_scheduler(self.stage2_lr)
-            
-            return self._train_epoch_stage2(dataloader, epoch, total_epochs)
+        """Single-stage training with FIDI+CE+Semantic from epoch 0."""
+        return self._train_epoch_single(dataloader, epoch, total_epochs)
     
-    def _train_epoch_stage1(self, dataloader, epoch, total_epochs):
-        """Stage 1: FIDI training only."""
+    def _train_epoch_single(self, dataloader, epoch, total_epochs):
+        """Single stage: FIDI + CE + Semantic (teacher-guided) from epoch 0."""
         self.model.train()
-        
-        # Apply learning rate warmup
         self._apply_warmup(epoch)
-        
+
         total_loss = 0.0
         total_fidi_loss = 0.0
         total_ce_loss = 0.0
-        total_semantic_loss = 0.0  # Always 0 in stage 1
-        
+        total_semantic_loss = 0.0
+
         batch_losses = []
         batch_fidi_losses = []
         batch_ce_losses = []
         batch_semantic_losses = []
-        
-        fidi_weight, cls_weight = self.get_loss_weights(epoch, total_epochs)
-        
+
+        # Lambda sampling per batch
+        num_batches = len(dataloader)
+        if self.config.lambda_distribution == 'binomial':
+            lambda_vals = torch.bernoulli(torch.full((num_batches,), 0.5))
+        elif self.config.lambda_distribution == 'beta':
+            alpha = beta = 0.2
+            lambda_vals = torch.distributions.Beta(alpha, beta).sample((num_batches,))
+        else:
+            lambda_vals = torch.rand(num_batches)
+
         for batch_idx, (images, labels) in enumerate(dataloader):
             images = images.to(self.device, non_blocking=True)
             labels = labels.to(self.device, non_blocking=True)
-            
-            # Standard forward pass (no semantic loss)
-            features, logits = self.model(images, return_semantic_loss=False)
-            
+
+            current_lambda = float(lambda_vals[batch_idx % len(lambda_vals)].item())
+
+            # Teacher forward to get spatial fused features for supervision
+            with torch.no_grad():
+                t_feat, t_logits, t_sem = self.teacher_student.forward_teacher(images, lambda_val=current_lambda)
+                teacher_features = t_sem.get('student_features', None) if isinstance(t_sem, dict) else None
+                teacher_pseudo_labels = t_sem.get('pseudo_labels', None) if isinstance(t_sem, dict) else None
+
+            # Student forward; pass teacher_features for semantic supervision path
+            features, logits, semantic_output = self.teacher_student.forward_student(
+                images, lambda_val=current_lambda, return_semantic_loss=True, teacher_features=teacher_features
+            )
+
+            # Compute semantic loss
+            semantic_loss = torch.tensor(0.0, device=self.device)
+            if isinstance(semantic_output, dict):
+                semantic_loss = self._compute_semantic_loss(
+                    student_features=semantic_output.get('student_features', features),
+                    pseudo_labels=teacher_pseudo_labels,
+                    mask=None
+                )
+                if semantic_loss.dim() > 0:
+                    semantic_loss = semantic_loss.mean()
+
+            # Losses
             fidi_loss = self.fidi_loss(features, labels)
             ce_loss = self.ce_loss(logits, labels)
-            loss = fidi_weight * fidi_loss + cls_weight * ce_loss
-            
-            # Optimization step
+
+            fidi_weight, cls_weight = self.get_loss_weights(epoch, total_epochs)
+            # Mild semantic at start (warm in over 5 epochs)
+            semantic_warm = min(1.0, (epoch + 1) / 5.0)
+            semantic_term = (current_lambda * self.semantic_weight * semantic_warm) * semantic_loss
+
+            loss = fidi_weight * fidi_loss + cls_weight * ce_loss + semantic_term
+
+            # Optimize
             self.optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.step()
-            
-            # Track losses
+
+            # Track
             batch_loss = loss.item()
             batch_fidi = fidi_loss.item()
             batch_ce = ce_loss.item()
-            batch_semantic = 0.0
-            
+            batch_semantic = semantic_loss.item() if hasattr(semantic_loss, 'item') else float(semantic_loss)
+
             total_loss += batch_loss
             total_fidi_loss += batch_fidi
             total_ce_loss += batch_ce
             total_semantic_loss += batch_semantic
-            
+
             batch_losses.append(batch_loss)
             batch_fidi_losses.append(batch_fidi)
             batch_ce_losses.append(batch_ce)
             batch_semantic_losses.append(batch_semantic)
-            
-            if batch_idx % 10 == 0:  # Changed from 50 to 10 for more frequent updates
-                print(f'FIDI Stage - Batch {batch_idx}: Loss={batch_loss:.6f}, '
-                      f'FIDI={batch_fidi:.6f}×{fidi_weight:.2f}, '
-                      f'CE={batch_ce:.6f}×{cls_weight:.2f}')
-        
-        # Calculate averages
+
+            if batch_idx % 10 == 0:
+                print(
+                    f'Single Stage - Batch {batch_idx}: Loss={batch_loss:.6f}, '
+                    f'FIDI={batch_fidi:.6f}×{fidi_weight:.2f}, '
+                    f'CE={batch_ce:.6f}×{cls_weight:.2f}, '
+                    f'Semantic={batch_semantic:.6f}×{self.semantic_weight:.2f}, '
+                    f'Lambda={current_lambda:.1f}'
+                )
+
         num_batches = len(dataloader)
-        avg_loss = total_loss / num_batches
-        avg_fidi = total_fidi_loss / num_batches
-        avg_ce = total_ce_loss / num_batches
-        avg_semantic = total_semantic_loss / num_batches
-        
-        # Update history
+        avg_loss = total_loss / num_batches if num_batches > 0 else 0.0
+        avg_fidi = total_fidi_loss / num_batches if num_batches > 0 else 0.0
+        avg_ce = total_ce_loss / num_batches if num_batches > 0 else 0.0
+        avg_semantic = total_semantic_loss / num_batches if num_batches > 0 else 0.0
+
         self.loss_history['fidi'].append(avg_fidi)
         self.loss_history['ce'].append(avg_ce)
         self.loss_history['semantic'].append(avg_semantic)
-        
+
+        if not batch_losses:
+            batch_losses = [0.0]
+        if not batch_fidi_losses:
+            batch_fidi_losses = [0.0]
+        if not batch_ce_losses:
+            batch_ce_losses = [0.0]
+        if not batch_semantic_losses:
+            batch_semantic_losses = [0.0]
+
         return avg_loss, avg_fidi, avg_ce, avg_semantic, batch_losses, batch_fidi_losses, batch_ce_losses, batch_semantic_losses
     
     def _train_epoch_stage2(self, dataloader, epoch, total_epochs):
@@ -1510,7 +1532,7 @@ class FIDITrainer:
             fidi_weight = 0.7
             cls_weight = 1.0
             
-        else:  # 'original' - your current strategy
+        else:  # 'original'
             fidi_weight = min(1.0, epoch / (total_epochs * 0.3))
             cls_weight = max(0.5, 1.0 - epoch / (total_epochs * 0.8))
         
@@ -1688,10 +1710,7 @@ class FIDITrainer:
         if num_epochs is None:
             num_epochs = self.total_epochs
         
-        print(f"Starting training with '{self.loss_strategy}' loss weighting strategy...")
-        print(f"Training plan:")
-        print(f"- FIDI stage: epochs 0-{self.stage_switch_epoch-1}")
-        print(f"- SOLIDER stage: epochs {self.stage_switch_epoch}-{num_epochs-1}")
+        print(f"Starting training with single-stage FIDI+CE+Semantic...")
         
         for epoch in range(num_epochs):
             # Stop training if we've reached total epochs
@@ -1871,184 +1890,185 @@ print(f"Using device(s): {device}")
 # In[9]:
 
 
-# # =========================
-# # ONNX Export for SOLIDER Model (Netron Visualization) - SIMPLIFIED CORE
-# # =========================
-# import torch
-# import torch.nn as nn
-# import os
+# =========================
+# ONNX Export for SOLIDER Model (Netron Visualization) - SIMPLIFIED CORE
+# =========================
+import torch
+import torch.nn as nn
+import os
 
-# def export_solider_model_to_onnx():
-#     """
-#     Export the SOLIDER CNN model to ONNX format for Netron visualization
-#     """
-#     print("Exporting SOLIDER CNN model to ONNX...")
+def export_solider_model_to_onnx():
+    """
+    Export the SOLIDER CNN model to ONNX format for Netron visualization
+    """
+    print("Exporting SOLIDER CNN model to ONNX...")
     
-#     # Create SOLIDER model instance
-#     solider_model = SOLIDERPersonReIDModel(num_classes=num_classes)
+    # Create SOLIDER model instance
+    solider_model = SOLIDERPersonReIDModel(num_classes=num_classes)
     
-#     # Determine device for dummy input
-#     if isinstance(device, (list, tuple)):
-#         dummy_device = f"cuda:{device[0]}" if torch.cuda.is_available() else "cpu"
-#     else:
-#         dummy_device = device if torch.cuda.is_available() else "cpu"
+    # Determine device for dummy input
+    if isinstance(device, (list, tuple)):
+        dummy_device = f"cuda:{device[0]}" if torch.cuda.is_available() else "cpu"
+    else:
+        dummy_device = device if torch.cuda.is_available() else "cpu"
     
-#     # Move model to device
-#     solider_model = solider_model.to(dummy_device)
-#     solider_model.eval()
+    # Move model to device
+    solider_model = solider_model.to(dummy_device)
+    solider_model.eval()
     
-#     # Create sample input tensor
-#     batch_size = 1
-#     sample_input = torch.randn(batch_size, 3, image_height, image_width, device=dummy_device)
+    # Create sample input tensor
+    batch_size = 1
+    sample_input = torch.randn(batch_size, 3, image_height, image_width, device=dummy_device)
     
-#     # Define ONNX export paths
-#     onnx_dir = "onnx_models"
-#     os.makedirs(onnx_dir, exist_ok=True)
+    # Define ONNX export paths
+    onnx_dir = "onnx_models"
+    os.makedirs(onnx_dir, exist_ok=True)
     
-#     # Create a wrapper that exports just the core backbone without the final layers
-#     class SOLIDERCoreWrapper(nn.Module):
-#         def __init__(self, model):
-#             super().__init__()
-#             self.model = model
+    # Create a wrapper that exports just the core backbone without the final layers
+    class SOLIDERCoreWrapper(nn.Module):
+        def __init__(self, model):
+            super().__init__()
+            self.model = model
             
-#             # Extract the core backbone (stages 0-4)
-#             self.stage0 = model.stage0
-#             self.stage1 = model.stage1
-#             self.stage2 = model.stage2
-#             self.stage3 = model.stage3
-#             self.stage4 = model.stage4
+            # Extract the core backbone (stages 0-4)
+            self.stage0 = model.stage0
+            self.stage1 = model.stage1
+            self.stage2 = model.stage2
+            self.stage3 = model.stage3
+            self.stage4 = model.stage4
             
-#             # Extract multi-scale fusion
-#             self.multi_scale_fusion = model.multi_scale_fusion
+            # Extract multi-scale fusion
+            self.multi_scale_fusion = model.multi_scale_fusion
             
-#             # Extract semantic clustering (without final layers)
-#             self.semantic_clustering = model.semantic_clustering
+            # Extract semantic clustering (without final layers)
+            self.semantic_clustering = model.semantic_clustering
         
-#         def forward(self, x):
-#             # Forward through stages
-#             stage0_out = self.stage0(x)
-#             stage1_out = self.stage1(stage0_out)
-#             stage2_out = self.stage2(stage1_out)
-#             stage3_out = self.stage3(stage2_out)
-#             stage4_out = self.stage4(stage3_out)
+        def forward(self, x):
+            # Forward through stages
+            stage0_out = self.stage0(x)
+            stage1_out = self.stage1(stage0_out)
+            stage2_out = self.stage2(stage1_out)
+            stage3_out = self.stage3(stage2_out)
+            stage4_out = self.stage4(stage3_out)
             
-#             # Multi-scale fusion
-#             fused_features = self.multi_scale_fusion([stage1_out, stage2_out, stage3_out, stage4_out])
+            # Multi-scale fusion
+            fused_features = self.multi_scale_fusion([stage1_out, stage2_out, stage3_out, stage4_out])
             
-#             # Global pooling
-#             pooled_features = torch.nn.functional.adaptive_avg_pool2d(fused_features, (1, 1))
-#             pooled_features = pooled_features.view(pooled_features.size(0), -1)
+            # Global pooling
+            pooled_features = torch.nn.functional.adaptive_avg_pool2d(fused_features, (1, 1))
+            pooled_features = pooled_features.view(pooled_features.size(0), -1)
             
-#             # Return intermediate features for visualization
-#             return pooled_features, stage4_out
+            # Return intermediate features for visualization
+            return pooled_features, stage4_out
     
-#     # Export core architecture
-#     core_onnx_path = os.path.join(onnx_dir, "solider_core_architecture.onnx")
-#     core_wrapper = SOLIDERCoreWrapper(solider_model)
+    # Export core architecture
+    core_onnx_path = os.path.join(onnx_dir, "solider_core_architecture.onnx")
+    core_wrapper = SOLIDERCoreWrapper(solider_model)
     
-#     try:
-#         print("Exporting core SOLIDER architecture...")
-#         torch.onnx.export(
-#             core_wrapper,
-#             sample_input,
-#             core_onnx_path,
-#             export_params=True,
-#             opset_version=11,
-#             do_constant_folding=True,
-#             input_names=['input_image'],
-#             output_names=['pooled_features', 'stage4_features'],
-#             dynamic_axes={
-#                 'input_image': {0: 'batch_size'}, 
-#                 'pooled_features': {0: 'batch_size'}, 
-#                 'stage4_features': {0: 'batch_size'}
-#             },
-#             verbose=False
-#         )
-#         print(f"✓ SOLIDER core architecture exported to: {core_onnx_path}")
+    try:
+        print("Exporting core SOLIDER architecture...")
+        torch.onnx.export(
+            core_wrapper,
+            sample_input,
+            core_onnx_path,
+            export_params=True,
+            opset_version=11,
+            do_constant_folding=True,
+            input_names=['input_image'],
+            output_names=['pooled_features', 'stage4_features'],
+            dynamic_axes={
+                'input_image': {0: 'batch_size'}, 
+                'pooled_features': {0: 'batch_size'}, 
+                'stage4_features': {0: 'batch_size'}
+            },
+            verbose=False
+        )
+        print(f"✓ SOLIDER core architecture exported to: {core_onnx_path}")
         
-#     except Exception as e:
-#         print(f"❌ Failed to export core architecture: {str(e)}")
+    except Exception as e:
+        print(f"❌ Failed to export core architecture: {str(e)}")
         
-#         # Try an even simpler approach - just the backbone stages
-#         print("Trying simplified backbone export...")
+        # Try an even simpler approach - just the backbone stages
+        print("Trying simplified backbone export...")
         
-#         class SOLIDERBackboneWrapper(nn.Module):
-#             def __init__(self, model):
-#                 super().__init__()
-#                 self.stage0 = model.stage0
-#                 self.stage1 = model.stage1
-#                 self.stage2 = model.stage2
-#                 self.stage3 = model.stage3
-#                 self.stage4 = model.stage4
+        class SOLIDERBackboneWrapper(nn.Module):
+            def __init__(self, model):
+                super().__init__()
+                self.stage0 = model.stage0
+                self.stage1 = model.stage1
+                self.stage2 = model.stage2
+                self.stage3 = model.stage3
+                self.stage4 = model.stage4
             
-#             def forward(self, x):
-#                 x = self.stage0(x)
-#                 x = self.stage1(x)
-#                 x = self.stage2(x)
-#                 x = self.stage3(x)
-#                 x = self.stage4(x)
-#                 return x
+            def forward(self, x):
+                x = self.stage0(x)
+                x = self.stage1(x)
+                x = self.stage2(x)
+                x = self.stage3(x)
+                x = self.stage4(x)
+                return x
         
-#         backbone_onnx_path = os.path.join(onnx_dir, "solider_backbone_stages.onnx")
-#         backbone_wrapper = SOLIDERBackboneWrapper(solider_model)
+        backbone_onnx_path = os.path.join(onnx_dir, "UPDATEDsolider_backbone_stages.onnx")
+        backbone_wrapper = SOLIDERBackboneWrapper(solider_model)
         
-#         try:
-#             torch.onnx.export(
-#                 backbone_wrapper,
-#                 sample_input,
-#                 backbone_onnx_path,
-#                 export_params=True,
-#                 opset_version=11,
-#                 do_constant_folding=True,
-#                 input_names=['input_image'],
-#                 output_names=['backbone_output'],
-#                 dynamic_axes={
-#                     'input_image': {0: 'batch_size'}, 
-#                     'backbone_output': {0: 'batch_size'}
-#                 },
-#                 verbose=False
-#             )
-#             print(f"✓ SOLIDER backbone stages exported to: {backbone_onnx_path}")
-#             core_onnx_path = backbone_onnx_path
+        try:
+            torch.onnx.export(
+                backbone_wrapper,
+                sample_input,
+                backbone_onnx_path,
+                export_params=True,
+                opset_version=11,
+                do_constant_folding=True,
+                input_names=['input_image'],
+                output_names=['backbone_output'],
+                dynamic_axes={
+                    'input_image': {0: 'batch_size'}, 
+                    'backbone_output': {0: 'batch_size'}
+                },
+                verbose=False
+            )
+            print(f"✓ SOLIDER backbone stages exported to: {backbone_onnx_path}")
+            core_onnx_path = backbone_onnx_path
             
-#         except Exception as e2:
-#             print(f"❌ Failed to export backbone stages: {str(e2)}")
-#             return None
+        except Exception as e2:
+            print(f"❌ Failed to export backbone stages: {str(e2)}")
+            return None
     
-#     # Print model statistics
-#     total_params = sum(p.numel() for p in solider_model.parameters())
-#     trainable_params = sum(p.numel() for p in solider_model.parameters() if p.requires_grad)
+    # Print model statistics
+    total_params = sum(p.numel() for p in solider_model.parameters())
+    trainable_params = sum(p.numel() for p in solider_model.parameters() if p.requires_grad)
     
-#     print(f"\n📊 SOLIDER Model Statistics:")
-#     print(f"   • Total parameters: {total_params:,}")
-#     print(f"   • Trainable parameters: {trainable_params:,}")
-#     print(f"   • Input shape: {tuple(sample_input.shape)}")
-#     print(f"   • Number of classes: {num_classes}")
+    print(f"\n📊 SOLIDER Model Statistics:")
+    print(f"   • Total parameters: {total_params:,}")
+    print(f"   • Trainable parameters: {trainable_params:,}")
+    print(f"   • Input shape: {tuple(sample_input.shape)}")
+    print(f"   • Number of classes: {num_classes}")
     
-#     print(f"\n🔍 Netron Visualization:")
-#     print(f"   1. Open Netron (https://netron.app/)")
-#     print(f"   2. Load the exported ONNX file: {core_onnx_path}")
+    print(f"\n🔍 Netron Visualization:")
+    print(f"   1. Open Netron (https://netron.app/)")
+    print(f"   2. Load the exported ONNX file: {core_onnx_path}")
     
-#     print(f"\n💡 Key SOLIDER Components to Look For:")
-#     print(f"   • Multi-scale feature fusion (stages 1-4)")
-#     print(f"   • Spatial semantic clustering")
-#     print(f"   • Semantic controller modules")
-#     print(f"   • ResNet backbone with SOLIDER blocks")
+    print(f"\n💡 Key SOLIDER Components to Look For:")
+    print(f"   • Multi-scale feature fusion (stages 1-4)")
+    print(f"   • Spatial semantic clustering")
+    print(f"   • Semantic controller modules")
+    print(f"   • ResNet backbone with SOLIDER blocks")
     
-#     return {'core': core_onnx_path}
+    return {'core': core_onnx_path}
 
-# # Execute the export
-# try:
-#     exported_models = export_solider_model_to_onnx()
-#     if exported_models:
-#         print("\n✅ SOLIDER model successfully exported to ONNX!")
-#         print("   You can now visualize it in Netron!")
-#     else:
-#         print("\n❌ Failed to export SOLIDER model")
+# Execute the export
+try:
+    exported_models = export_solider_model_to_onnx()
+    if exported_models:
+        print("\n✅ SOLIDER model successfully exported to ONNX!")
+        print("   You can now visualize it in Netron!")
+    else:
+        print("\n❌ Failed to export SOLIDER model")
         
-# except Exception as e:
-#     print(f"❌ Error during export: {str(e)}")
-#     print("Make sure the SOLIDERPersonReIDModel class has been defined and all dependencies are imported.")
+except Exception as e:
+    print(f"❌ Error during export: {str(e)}")
+    print("Make sure the SOLIDERPersonReIDModel class has been defined and all dependencies are imported.")
+
 
 
 # In[ ]:
@@ -2192,21 +2212,8 @@ if __name__ == "__main__":
     print(f"\n🚀 Starting training...")
     print("=" * 80)
     
-    # Optional resume support
-    resume_path = os.environ.get('RESUME_CHECKPOINT', None)
+    # Resume disabled: always start from epoch 0
     start_epoch = 0
-    if resume_path and os.path.exists(resume_path):
-        try:
-            ckpt = torch.load(resume_path, map_location='cpu')
-            trainer.model.load_state_dict(ckpt['model_state_dict'])
-            trainer.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
-            if 'scheduler_state_dict' in ckpt:
-                trainer.scheduler.load_state_dict(ckpt['scheduler_state_dict'])
-            start_epoch = int(ckpt.get('epoch', -1)) + 1
-            log_print(f"Resuming from checkpoint: {resume_path} (start_epoch={start_epoch})")
-        except Exception as e:
-            log_print(f"Warning: Failed to load resume checkpoint '{resume_path}': {e}")
-            start_epoch = 0
 
     try:
         # Start training automatically
@@ -2285,19 +2292,7 @@ if __name__ == "__main__":
 
             trainer.scheduler.step()
 
-            # Always save a last checkpoint for resume
-            try:
-                last_ckpt = {
-                    'epoch': epoch,
-                    'stage': ('fidi' if epoch < trainer.stage_switch_epoch else 'solider'),
-                    'model_state_dict': trainer.model.state_dict(),
-                    'optimizer_state_dict': trainer.optimizer.state_dict(),
-                    'scheduler_state_dict': trainer.scheduler.state_dict(),
-                }
-                os.makedirs('weights', exist_ok=True)
-                torch.save(last_ckpt, 'weights/last_checkpoint.pth')
-            except Exception as e:
-                log_print(f"Warning: Failed to save last checkpoint: {e}")
+            # Resume checkpoint saving disabled
 
             # Save at key points: end of warmup, middle and end of each stage
             save_points = [trainer.warmup_epochs, 25, 50, 75, 100]

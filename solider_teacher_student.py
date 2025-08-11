@@ -31,7 +31,7 @@ class TeacherStudentSOLIDER:
                 (1 - self.momentum) * student_param.data
             )
             
-    def forward_student(self, images, lambda_val=0.5, return_semantic_loss=True, masked_features=None):
+    def forward_student(self, images, lambda_val=0.5, return_semantic_loss=True, teacher_features=None):
         """
         Forward pass through student network with optional masked feature input
         Args:
@@ -40,9 +40,8 @@ class TeacherStudentSOLIDER:
             return_semantic_loss: Whether to return semantic supervision info
             masked_features: Optional masked features for prediction
         """
-        # Always run the student on images. Masked features are used only to weight semantic loss,
-        # not as image inputs to the backbone.
-        return self.student(images, lambda_val, return_semantic_loss)
+        # Always run the student on images; provide teacher_features for semantic supervision.
+        return self.student(images, lambda_val, return_semantic_loss, teacher_features=teacher_features)
         
     @torch.no_grad()
     def forward_teacher(self, images, lambda_val=0.5):
