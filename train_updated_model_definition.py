@@ -363,9 +363,9 @@ class SpatialSemanticClustering(nn.Module):
         
         # Semantic classification
         semantic_logits = self.semantic_head(student_flat)
-        # Use label smoothing for better training stability
+        # Use label smoothing for better training stability and ensure scalar output
         semantic_loss = F.cross_entropy(semantic_logits, labels_flat, 
-                                       reduction='mean', label_smoothing=0.1)
+                                      reduction='mean', label_smoothing=0.1).mean()
         
         return {
             'semantic_loss': semantic_loss,
@@ -512,7 +512,7 @@ class SimpleTrainer:
             # Losses
             fidi_value = self.fidi_loss_fn(features, labels)
             ce_value = self.ce_loss_fn(logits, labels)
-            sem_value = semantic_output['semantic_loss']
+            sem_value = semantic_output['semantic_loss'].mean() if isinstance(semantic_output['semantic_loss'], torch.Tensor) else semantic_output['semantic_loss']
 
             # Update DWA and fetch weights that sum to 1.0
             self.dwa.update([fidi_value.item(), ce_value.item(), sem_value.item()])
