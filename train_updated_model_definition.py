@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-VisNet: A simple, self-contained Person Re-ID model and trainer in a single file.
+SOLIDER: Semantic-Oriented Learning with Identity-aware Discriminative Embeddings for Re-identification.
 
 Key properties:
 - ResNet-50 backbone (torchvision) up to layer4, global average pooling → 2048-d embedding
@@ -118,56 +118,51 @@ class DynamicWeightAveraging:
         return float(weights[0]), float(weights[1]), float(weights[2])
 
 
-class VisNet(nn.Module):
+class SOLIDERPersonReIDModel(nn.Module):
     """
-    VisNet: ResNet-50 backbone with three heads for FIDI, CE (ID), and Semantic losses.
-
-    Forward outputs:
-    - embedding_2048: B x 2048 (L2-normalized, for FIDI)
-    - logits_id:      B x num_classes (for CE)
-    - semantic_logits: B x (num_parts+1) x Hs x Ws (semantic head over spatial features)
-    - semantic_pseudo_labels: B x Hs x Ws (generated inside; last index is background)
+    SOLIDER Person Re-ID model with improved stability.
+    
+    Key components:
+    1. ResNet50 backbone with multi-scale features
+    2. Multi-scale feature fusion with attention
+    3. Spatial semantic clustering for body parts
+    4. FIDI loss for fine-grained metric learning
     """
-
-    def __init__(
-        self,
-        num_classes: int,
-        num_semantic_parts: int = 3,
-        use_imagenet_weights: bool = True,
-    ) -> None:
-        super().__init__()
-        self.num_classes = num_classes
-        self.num_semantic_parts = num_semantic_parts
-        self.background_label = num_semantic_parts  # last index is background
-
-        # Build ResNet-50 backbone
-        resnet50 = self._build_resnet50(use_imagenet_weights)
-        self.stem = nn.Sequential(resnet50.conv1, resnet50.bn1, resnet50.relu, resnet50.maxpool)
-        self.layer1 = resnet50.layer1  # C=256
-        self.layer2 = resnet50.layer2  # C=512
-        self.layer3 = resnet50.layer3  # C=1024 (used for semantic head)
-        self.layer4 = resnet50.layer4  # C=2048 (used for embedding)
-
-        # Heads
-        # 1) Semantic head over layer3 feature map
-        self.semantic_head = nn.Sequential(
-            nn.Conv2d(1024, 512, kernel_size=1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.1),
-            nn.Conv2d(512, num_semantic_parts + 1, kernel_size=1)
+    def __init__(self, num_classes, feature_dim=2048, num_semantic_parts=3):
+        super(SOLIDERPersonReIDModel, self).__init__()
+        
+        # Load ResNet50 backbone
+        resnet = models.resnet50(pretrained=True)
+        
+        # Extract stages
+        self.stage0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
+        self.stage1 = resnet.layer1  # 256 channels
+        self.stage2 = resnet.layer2  # 512 channels  
+        self.stage3 = resnet.layer3  # 1024 channels
+        self.stage4 = resnet.layer4  # 2048 channels
+        
+        # Multi-scale fusion with correct dimensions
+        self.multi_scale_fusion = MultiScaleFeatureFusion(
+            feature_dims=[256, 512, 1024, 2048],
+            output_dim=feature_dim
         )
-
-        # 2) CE/ID head (BNNeck + classifier)
+        
+        # Semantic clustering
+        self.semantic_clustering = SpatialSemanticClustering(
+            feature_dim=feature_dim,
+            num_semantic_parts=num_semantic_parts
+        )
+        
+        # Classification head
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.bnneck_id = nn.BatchNorm1d(2048)
-        self.bnneck_id.bias.requires_grad_(False)
-        self.classifier_id = nn.Linear(2048, num_classes, bias=False)
-
-        # 3) FIDI head (separate BN + L2 normalize)
-        self.bnneck_metric = nn.BatchNorm1d(2048)
-
-        self._init_weights()
+        self.bn_neck = nn.BatchNorm1d(feature_dim)
+        self.bn_neck.bias.requires_grad_(False)
+        self.classifier = nn.Linear(feature_dim, num_classes, bias=False)
+        
+        # Initialize parameters
+        nn.init.kaiming_normal_(self.classifier.weight, mode='fan_out')
+        nn.init.constant_(self.bn_neck.weight, 1)
+        nn.init.constant_(self.bn_neck.bias, 0)
 
     @staticmethod
     def _build_resnet50(use_imagenet_weights: bool) -> models.ResNet:
@@ -260,9 +255,209 @@ class VisNet(nn.Module):
         return F.cross_entropy(logits_flat, labels_flat, label_smoothing=label_smoothing)
 
 
+class SpatialSemanticClustering(nn.Module):
+    """
+    Improved spatial-level semantic clustering for CNN feature maps.
+    """
+    def __init__(self, feature_dim, num_semantic_parts=3):
+        super(SpatialSemanticClustering, self).__init__()
+        self.feature_dim = feature_dim
+        self.num_semantic_parts = num_semantic_parts
+        
+        # Semantic head with dropout for robustness
+        self.semantic_head = nn.Sequential(
+            nn.Linear(feature_dim, feature_dim // 2),
+            nn.BatchNorm1d(feature_dim // 2),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.1),
+            nn.Linear(feature_dim // 2, feature_dim // 4),
+            nn.BatchNorm1d(feature_dim // 4),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.1),
+            nn.Linear(feature_dim // 4, num_semantic_parts + 1)
+        )
+        
+        # Initialize weights properly
+        self._init_weights()
+        
+    def _init_weights(self):
+        """Initialize weights for better convergence"""
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+        
+    def spatial_semantic_labeling(self, feature_maps):
+        """Generate spatial semantic labels based on human priors."""
+        B, C, H, W = feature_maps.shape
+        device = feature_maps.device
+        
+        # Create spatial coordinate grids
+        y_coords = torch.linspace(0, 1, H, device=device).view(H, 1).expand(H, W)
+        
+        # Human prior: spatial semantic assignment
+        semantic_labels = torch.zeros(H, W, dtype=torch.long, device=device)
+        
+        # Upper body: top 40%
+        upper_mask = y_coords < 0.4
+        semantic_labels[upper_mask] = 0
+        
+        # Lower body: middle 40%
+        middle_mask = (y_coords >= 0.4) & (y_coords < 0.8)
+        semantic_labels[middle_mask] = 1
+        
+        # Shoes: bottom 20%
+        lower_mask = y_coords >= 0.8
+        semantic_labels[lower_mask] = 2
+        
+        return semantic_labels
+    
+    def foreground_background_clustering(self, feature_maps):
+        """Separate foreground and background with improved stability."""
+        B, C, H, W = feature_maps.shape
+        
+        # Calculate feature magnitude
+        feature_magnitude = torch.norm(feature_maps, dim=1, p=2)  # [B, H, W]
+        
+        # Adaptive threshold with clamping for stability
+        batch_mean = feature_magnitude.mean(dim=(1, 2), keepdim=True)  # [B, 1, 1]
+        batch_std = feature_magnitude.std(dim=(1, 2), keepdim=True)     # [B, 1, 1]
+        
+        # Clamp std to avoid division by zero
+        batch_std = torch.clamp(batch_std, min=1e-6)
+        fg_threshold = batch_mean + 0.5 * batch_std  # [B, 1, 1]
+        
+        # Create foreground mask and ensure it's [B, H, W]
+        fg_mask = feature_magnitude > fg_threshold  # Broadcasting to [B, H, W]
+        
+        return fg_mask
+    
+    def forward(self, student_features, teacher_features=None):
+        """Forward pass with improved error handling."""
+        B, C, H, W = student_features.shape
+        device = student_features.device
+        
+        # Use teacher features if available
+        clustering_features = teacher_features if teacher_features is not None else student_features
+        
+        # Generate pseudo semantic labels
+        fg_mask = self.foreground_background_clustering(clustering_features)
+        spatial_labels = self.spatial_semantic_labeling(clustering_features)
+        
+        # Combine foreground mask with spatial labels - TorchScript compatible
+        pseudo_labels = torch.full((B, H, W), self.num_semantic_parts, 
+                                 dtype=torch.long, device=device)
+        
+        # Vectorized operation instead of loop
+        spatial_labels_expanded = spatial_labels.unsqueeze(0).expand(B, -1, -1)  # [B, H, W]
+        pseudo_labels = torch.where(fg_mask, spatial_labels_expanded, pseudo_labels)
+        
+        # Flatten for classification
+        student_flat = student_features.permute(0, 2, 3, 1).reshape(-1, C)
+        labels_flat = pseudo_labels.reshape(-1)
+        
+        # Semantic classification
+        semantic_logits = self.semantic_head(student_flat)
+        # Use label smoothing for better training stability
+        semantic_loss = F.cross_entropy(semantic_logits, labels_flat, 
+                                       reduction='mean', label_smoothing=0.1)
+        
+        return {
+            'semantic_loss': semantic_loss,
+            'pseudo_labels': pseudo_labels,
+            'foreground_mask': fg_mask,
+            'semantic_logits': semantic_logits.view(B, H, W, -1)
+        }
+
+class MultiScaleFeatureFusion(nn.Module):
+    """
+    Fixed multi-scale feature fusion with proper dimension handling.
+    """
+    def __init__(self, feature_dims=None, output_dim=2048):
+        super(MultiScaleFeatureFusion, self).__init__()
+        
+        # Default ResNet50 dimensions if not provided
+        if feature_dims is None:
+            feature_dims = [256, 512, 1024, 2048]
+        
+        self.feature_dims = feature_dims
+        self.output_dim = output_dim
+        
+        # Projection layers to align dimensions
+        self.projections = nn.ModuleList()
+        for dim in feature_dims:
+            if dim != output_dim:
+                self.projections.append(nn.Sequential(
+                    nn.Conv2d(dim, output_dim, kernel_size=1, bias=False),
+                    nn.BatchNorm2d(output_dim),
+                    nn.ReLU(inplace=True)
+                ))
+            else:
+                # Identity projection for same dimension
+                self.projections.append(nn.Identity())
+        
+        # Attention mechanism for scale weighting
+        self.scale_attention = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(output_dim, output_dim // 4, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(output_dim // 4, len(feature_dims), 1),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, multi_scale_features):
+        """Fuse multi-scale features with proper error handling."""
+        # Fixed implementation for TorchScript compatibility
+        # We know we have exactly 4 features: [x1, x2, x3, x4]
+        if len(multi_scale_features) != 4:
+            # Fallback for unexpected number of features
+            if len(multi_scale_features) == 0:
+                device = torch.device('cpu')
+                return torch.zeros(1, self.output_dim, 8, 4, device=device)
+            # Use the last feature as fallback
+            return multi_scale_features[-1]
+        
+        # Extract individual features
+        feat1, feat2, feat3, feat4 = multi_scale_features
+        
+        # Get target size from the highest resolution feature (last one)
+        target_size = feat4.shape[2:]
+        
+        # Project and resize features individually
+        proj1 = self.projections[0](feat1)
+        proj2 = self.projections[1](feat2)
+        proj3 = self.projections[2](feat3)
+        proj4 = self.projections[3](feat4)
+        
+        # Resize if needed
+        if proj1.shape[2:] != target_size:
+            proj1 = F.interpolate(proj1, size=target_size, mode='bilinear', align_corners=False)
+        if proj2.shape[2:] != target_size:
+            proj2 = F.interpolate(proj2, size=target_size, mode='bilinear', align_corners=False)
+        if proj3.shape[2:] != target_size:
+            proj3 = F.interpolate(proj3, size=target_size, mode='bilinear', align_corners=False)
+        if proj4.shape[2:] != target_size:
+            proj4 = F.interpolate(proj4, size=target_size, mode='bilinear', align_corners=False)
+        
+        # Stack features for attention computation
+        stacked_features = torch.stack([proj1, proj2, proj3, proj4], dim=1)  # [B, 4, C, H, W]
+        B, num_scales, C, H, W = stacked_features.shape
+        
+        # Compute attention weights using mean feature
+        mean_feature = torch.mean(stacked_features, dim=1)  # [B, C, H, W]
+        attention_weights = self.scale_attention(mean_feature)  # [B, 4, 1, 1]
+        
+        # Apply attention and fuse
+        attention_weights = attention_weights.unsqueeze(2)  # [B, 4, 1, 1, 1]
+        weighted_features = stacked_features * attention_weights
+        fused_features = torch.sum(weighted_features, dim=1)  # [B, C, H, W]
+        
+        return fused_features
+
 class SimpleTrainer:
     """
-    Minimal trainer for VisNet with three losses:
+    Minimal trainer for SOLIDER with three losses:
     - FIDI loss (metric)
     - CE loss (ID classification)
     - Semantic loss (spatial classification with pseudo-labels)
@@ -272,7 +467,7 @@ class SimpleTrainer:
 
     def __init__(
         self,
-        model: VisNet,
+        model: SOLIDERPersonReIDModel,
         num_classes: int,
         device: str | torch.device | List[int] = "cuda" if torch.cuda.is_available() else "cpu",
         learning_rate: float = 3e-4,
@@ -313,7 +508,7 @@ class SimpleTrainer:
             # Losses
             fidi_value = self.fidi_loss_fn(outputs["embedding_2048"], labels)
             ce_value = self.ce_loss_fn(outputs["logits_id"], labels)
-            sem_value = VisNet.semantic_loss_from_logits(
+            sem_value = SOLIDERPersonReIDModel.semantic_loss_from_logits(
                 outputs["semantic_logits"], outputs["semantic_pseudo_labels"], label_smoothing=0.1
             )
 
@@ -357,8 +552,8 @@ class SimpleTrainer:
             else:
                 images, labels = batch
             images = images.to(self.device, non_blocking=True)
-            outputs = self.model(images)
-            all_features.append(outputs["embedding_2048"].cpu())
+            features, _ = self.model(images)
+            all_features.append(features.cpu())
             all_labels.append(labels)
         return torch.cat(all_features, dim=0), torch.cat(all_labels, dim=0)
 
@@ -647,9 +842,9 @@ warnings.filterwarnings('ignore')
 
 # Removed SOLIDER model (replaced by VisNet)
 
-def create_visnet_model(num_classes: int) -> VisNet:
+def create_solider_model(num_classes: int) -> SOLIDERPersonReIDModel:
     """Factory function to create VisNet model."""
-    return VisNet(num_classes=num_classes)
+    return SOLIDERPersonReIDModel(num_classes=num_classes)
 
 
 """Removed residual SOLIDER trainer code."""
@@ -768,11 +963,9 @@ class FIDITrainer:
             # Move model to cuda first, then wrap in DataParallel
             model = model.cuda()
             self.model = nn.DataParallel(model, device_ids=device)
-            #self.is_parallel = True
         else:
             self.device = torch.device(device)
             self.model = model.to(self.device)
-            self.is_parallel = False
         
         self.num_classes = num_classes
         self.fidi_loss = FIDILoss(alpha=alpha, beta=beta)
@@ -1163,14 +1356,85 @@ print(f"✓ DataLoaders ready: train {len(train_loader)} batches, "
 # In[ ]:
 
 
-# 8. VisNet Model & Trainer Initialization
+# 8. SOLIDER Model & Trainer Initialization
 
 # Model
-visnet_model = VisNet(num_classes=num_classes)
+solider_model = SOLIDERPersonReIDModel(num_classes=num_classes)
+
+# Export SOLIDER core to ONNX for Netron visualization
+def export_solider_to_onnx(model: SOLIDERPersonReIDModel, export_path: str) -> None:
+    model.eval()
+    export_device = next(model.parameters()).device
+    dummy_input = torch.randn(1, 3, image_height, image_width, device=export_device)
+
+    class SOLIDERCore(nn.Module):
+        def __init__(self, model_: SOLIDERPersonReIDModel):
+            super().__init__()
+            # Keep full model for visualization
+            self.stage0 = model_.stage0
+            self.stage1 = model_.stage1
+            self.stage2 = model_.stage2
+            self.stage3 = model_.stage3
+            self.stage4 = model_.stage4
+            self.multi_scale_fusion = model_.multi_scale_fusion
+            self.semantic_clustering = model_.semantic_clustering
+            self.global_pool = model_.global_pool
+            self.bn_neck = model_.bn_neck
+            self.classifier = model_.classifier
+        
+        def forward(self, x):
+            # Full forward pass for visualization
+            x0 = self.stage0(x)
+            x1 = self.stage1(x0)
+            x2 = self.stage2(x1)
+            x3 = self.stage3(x2)
+            x4 = self.stage4(x3)
+            
+            # Multi-scale fusion
+            fused_features = self.multi_scale_fusion([x1, x2, x3, x4])
+            
+            # Global pooling and feature extraction
+            pooled_features = self.global_pool(fused_features)
+            pooled_features = pooled_features.view(pooled_features.size(0), -1)
+            features = self.bn_neck(pooled_features)
+            logits = self.classifier(features)
+            
+            # For visualization only - no loss computation
+            semantic_features = self.semantic_clustering(fused_features, None)
+            
+            return features, logits, semantic_features['semantic_logits']
+
+    core = SOLIDERCore(model).to(export_device)
+    torch.onnx.export(
+        core,
+        dummy_input,
+        export_path,
+        export_params=True,
+        opset_version=12,  # Using opset 12 for cross_entropy_loss support
+        do_constant_folding=True,
+        input_names=['input_image'],
+        output_names=['features', 'logits', 'semantic_features'],
+        dynamic_axes={
+            'input_image': {0: 'batch_size'},
+            'features': {0: 'batch_size'},
+            'logits': {0: 'batch_size'},
+            'semantic_features': {0: 'batch_size'}
+        },
+        verbose=False,
+    )
+
+os.makedirs("onnx_models", exist_ok=True)
+solider_model = solider_model.to(device if isinstance(device, str) else (f"cuda:{device[0]}" if torch.cuda.is_available() and isinstance(device, (list, tuple)) else 'cpu'))
+export_path = os.path.join("onnx_models", "restored.onnx")
+try:
+    export_solider_to_onnx(solider_model, export_path)
+    print(f"✓ SOLIDER core exported to ONNX: {export_path}")
+except Exception as ex:
+    print(f"Warning: Failed to export SOLIDER ONNX: {ex}")
 
 # Trainer
 trainer = SimpleTrainer(
-    model=visnet_model,
+    model=solider_model,
     num_classes=num_classes,
     device=device,
     learning_rate=lr,
@@ -1179,7 +1443,7 @@ trainer = SimpleTrainer(
     fidi_beta=beta,
 )
 
-print(f"✓ VisNet model with {num_classes} classes")
+print(f"✓ SOLIDER model with {num_classes} classes")
 print(f"Using device(s): {device}")
 
 
@@ -1218,7 +1482,7 @@ eval_freq = 10
 # =========================
 if __name__ == "__main__":
     print("=" * 80)
-    print("VisNet Person Re-ID Training Script")
+    print("SOLIDER Person Re-ID Training Script")
     print("=" * 80)
     
     if torch.cuda.is_available():
@@ -1300,7 +1564,7 @@ if __name__ == "__main__":
             )
             print(f"Saved checkpoint: {ckpt_path}")
 
-        # Evaluate every 10 epochs and update accuracy plot
+        # Evaluate every 10 epochs, update accuracy plot, and save JIT model
         if (epoch + 1) % 10 == 0:
             cmc, mAP = trainer.evaluate(query_loader, gallery_loader)
             r1 = float(cmc[0].item()) if cmc.numel() > 0 else 0.0
@@ -1330,7 +1594,33 @@ if __name__ == "__main__":
         plt.savefig("training_plots/validation_accuracy.png", dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
         
-    print("=" * 80)
+            # Save state dict (.pth) and TorchScript (.pt) at evaluation time
+        os.makedirs("weights", exist_ok=True)
+        pth_eval_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pth")
+        torch.save(
+            {
+                'epoch': epoch + 1,
+                'model_state_dict': trainer.model.state_dict(),
+                'optimizer_state_dict': trainer.optimizer.state_dict(),
+                'scheduler_state_dict': trainer.scheduler.state_dict(),
+            },
+            pth_eval_path,
+        )
+        print(f"Saved checkpoint: {pth_eval_path}")
+
+        # TorchScript export (inference-ready .pt)
+        model_to_save = trainer.model.module if hasattr(trainer.model, 'module') else trainer.model
+        model_to_save.eval()
+        example_input = torch.randn(1, 3, image_height, image_width, device=next(model_to_save.parameters()).device)
+        try:
+            traced = torch.jit.trace(model_to_save, example_input)
+            ts_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pt")
+            traced.save(ts_path)
+            print(f"Saved TorchScript model: {ts_path}")
+        except Exception as ex:
+            print(f"Warning: TorchScript export failed at epoch {epoch+1}: {ex}")
+        
+        print("=" * 80)
     print("Training finished.")
 
 
