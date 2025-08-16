@@ -131,6 +131,12 @@ class SOLIDERPersonReIDModel(nn.Module):
     def __init__(self, num_classes, feature_dim=2048, num_semantic_parts=3):
         super(SOLIDERPersonReIDModel, self).__init__()
         
+        # Model parameters
+        self.num_classes = num_classes
+        self.feature_dim = feature_dim
+        self.num_semantic_parts = num_semantic_parts
+        self.background_label = num_semantic_parts  # Last index is background
+        
         # Load ResNet50 backbone
         resnet = models.resnet50(pretrained=True)
         
@@ -212,35 +218,33 @@ class SOLIDERPersonReIDModel(nn.Module):
         pseudo = torch.where(fg_mask, spatial_expanded, pseudo)
         return pseudo
 
-    def forward(self, images: torch.Tensor) -> Dict[str, torch.Tensor]:
-        # Backbone
-        x = self.stem(images)
-        x1 = self.layer1(x)
-        x2 = self.layer2(x1)
-        x3 = self.layer3(x2)  # semantic map
-        x4 = self.layer4(x3)  # embedding map
-
-        # Semantic head
-        semantic_logits = self.semantic_head(x3)  # B x (parts+1) x Hs x Ws
-        semantic_pseudo_labels = self._generate_pseudo_labels(x3)  # B x Hs x Ws
-
-        # Global pooled features → 2048-d
-        pooled = self.global_pool(x4).flatten(1)  # B x 2048
-
-        # CE head
-        id_features = self.bnneck_id(pooled)
-        logits_id = self.classifier_id(id_features)
-
-        # FIDI head
-        metric_features = self.bnneck_metric(pooled)
-        embedding_2048 = F.normalize(metric_features, p=2, dim=1)
-
-        return {
-            "embedding_2048": embedding_2048,
-            "logits_id": logits_id,
-            "semantic_logits": semantic_logits,
-            "semantic_pseudo_labels": semantic_pseudo_labels,
-        }
+    def forward(self, x, lambda_val=0.5, return_semantic_loss=False, teacher_features=None):
+        """
+        Forward pass with consistent output handling.
+        """
+        # Extract multi-scale features
+        x0 = self.stage0(x)
+        x1 = self.stage1(x0)
+        x2 = self.stage2(x1)  
+        x3 = self.stage3(x2)
+        x4 = self.stage4(x3)
+        
+        # Multi-scale fusion
+        fused_features = self.multi_scale_fusion([x1, x2, x3, x4])
+        
+        # Global pooling and classification
+        pooled_features = self.global_pool(fused_features)
+        pooled_features = pooled_features.view(pooled_features.size(0), -1)
+        features = self.bn_neck(pooled_features)
+        logits = self.classifier(features)
+        
+        # Return based on request
+        if return_semantic_loss:
+            # Semantic clustering for training
+            semantic_output = self.semantic_clustering(fused_features, teacher_features)
+            return features, logits, semantic_output
+        else:
+            return features, logits
 
     @staticmethod
     def semantic_loss_from_logits(
@@ -503,14 +507,12 @@ class SimpleTrainer:
             images = images.to(self.device, non_blocking=True)
             labels = labels.to(self.device, non_blocking=True)
 
-            outputs = self.model(images)
+            features, logits, semantic_output = self.model(images, return_semantic_loss=True)
 
             # Losses
-            fidi_value = self.fidi_loss_fn(outputs["embedding_2048"], labels)
-            ce_value = self.ce_loss_fn(outputs["logits_id"], labels)
-            sem_value = SOLIDERPersonReIDModel.semantic_loss_from_logits(
-                outputs["semantic_logits"], outputs["semantic_pseudo_labels"], label_smoothing=0.1
-            )
+            fidi_value = self.fidi_loss_fn(features, labels)
+            ce_value = self.ce_loss_fn(logits, labels)
+            sem_value = semantic_output['semantic_loss']
 
             # Update DWA and fetch weights that sum to 1.0
             self.dwa.update([fidi_value.item(), ce_value.item(), sem_value.item()])
