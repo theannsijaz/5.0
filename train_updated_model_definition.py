@@ -1,21 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-"""
-SOLIDER: Semantic-Oriented Learning with Identity-aware Discriminative Embeddings for Re-identification.
-
-Key properties:
-- ResNet-50 backbone (torchvision) up to layer4, global average pooling → 2048-d embedding
-- Three losses and separate heads:
-  1) FIDI loss head (metric head with BN + L2 normalize)
-  2) CE/ID head (BNNeck + linear classifier)
-  3) Semantic head (1x1 conv head over spatial feature map)
-- Dynamic loss weighting using DWA (Dynamic Weight Averaging). Weights sum to 1.0
-- No external project imports; everything is defined here
-
-This file intentionally avoids complex pipelines and stages; it is designed to be
-easy to read, adapt, and reuse.
-"""
 
 import math
 import os
@@ -30,19 +15,10 @@ import torch.nn.functional as F
 import torchvision.models as models
 
 
+import torch
+import torch.nn as nn
+
 class FIDILoss(nn.Module):
-    """
-    Fine-grained Difference-aware (FIDI) Pairwise Loss
-
-    Implements the α-divergence formulation from the paper:
-    L_fidi = D(U||K) + D(K||U)
-
-    Where:
-    - U = exp(-β * d(zi, zj)) : learned probability distribution
-    - K = binary ground truth matrix (1 if same identity, 0 otherwise)
-    - D(P||Q) = Σ p_ij * log(α * p_ij / ((α-1) * p_ij + q_ij)) : α-divergence
-    """
-
     def __init__(self, alpha: float = 1.05, beta: float = 0.5) -> None:
         super().__init__()
         self.alpha = alpha
@@ -50,41 +26,62 @@ class FIDILoss(nn.Module):
         self.eps = 1e-8
 
     def forward(self, features: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        batch_size = features.size(0)
         distances = self._compute_pairwise_distances(features)
         labels = labels.view(-1, 1)
         k_matrix = (labels == labels.T).float()
         u_matrix = torch.exp(-self.beta * distances)
-        d_u_k = self._compute_alpha_divergence(u_matrix, k_matrix)
-        d_k_u = self._compute_alpha_divergence(k_matrix, u_matrix)
+        
+        # Create mask to exclude diagonal elements (same sample pairs)
+        mask = ~torch.eye(batch_size, dtype=torch.bool, device=features.device)
+        
+        # Apply mask to get valid pairs
+        u_pairs = u_matrix[mask]
+        k_pairs = k_matrix[mask]
+        
+        # Equation 4 & 5
+        d_u_k = self._compute_divergence(u_pairs, k_pairs)
+        d_k_u = self._compute_divergence(k_pairs, u_pairs)
+        
         return d_u_k + d_k_u
 
     def _compute_pairwise_distances(self, features: torch.Tensor) -> torch.Tensor:
-        # Euclidean distance with numerical stability
-        squared = torch.sum(features ** 2, dim=1, keepdim=True)
-        distances = squared + squared.T - 2.0 * (features @ features.T)
+        """Compute pairwise Euclidean distances efficiently"""
+        # L2 normalize features
+        features = nn.functional.normalize(features, p=2, dim=1)
+        
+        # Efficient pairwise distance computation THROUGH L2
+        squared_norms = torch.sum(features ** 2, dim=1, keepdim=True)
+        distances = squared_norms + squared_norms.T - 2.0 * (features @ features.T)
         distances = torch.clamp(distances, min=0.0)
         return torch.sqrt(distances + self.eps)
 
-    def _compute_alpha_divergence(self, p_matrix: torch.Tensor, q_matrix: torch.Tensor) -> torch.Tensor:
-        p_matrix = torch.clamp(p_matrix, min=self.eps, max=1.0 - self.eps)
-        q_matrix = torch.clamp(q_matrix, min=self.eps, max=1.0 - self.eps)
-        denominator = (self.alpha - 1.0) * p_matrix + q_matrix
+    def _compute_divergence(self, u_ij: torch.Tensor, k_ij: torch.Tensor) -> torch.Tensor:
+        """
+        Compute D(U||K) from Equation 5:
+        D(U||K) = Σ u_ij * log(α * u_ij / ((α-1) * u_ij + k_ij))
+        """
+        # Clamp values to avoid numerical issues
+        u_ij = torch.clamp(u_ij, min=self.eps, max=1.0 - self.eps)
+        k_ij = torch.clamp(k_ij, min=self.eps, max=1.0 - self.eps)
+        
+        denominator = (self.alpha - 1.0) * u_ij + k_ij
         denominator = torch.clamp(denominator, min=self.eps)
-        fraction = (self.alpha * p_matrix) / denominator
+        
+        numerator = self.alpha * u_ij
+        
+        fraction = numerator / denominator
         fraction = torch.clamp(fraction, min=self.eps)
-        alpha_div = p_matrix * torch.log(fraction)
-        # Exclude diagonal
-        mask = ~torch.eye(p_matrix.size(0), dtype=torch.bool, device=p_matrix.device)
-        return alpha_div[mask].mean()
+        
+        divergence = u_ij * torch.log(fraction)
+        
+        return divergence.mean()
+
 
 
 class DynamicWeightAveraging:
-    """
-    Dynamic Weight Averaging (DWA) for multi-task learning.
-    - Uses relative rate of loss change to assign weights.
-    - Here adapted to 3 tasks (FIDI, CE, Semantic) with weights that sum to 1.0.
-    - Reference: End-to-End Multi-Task Learning with Attention (Liu et al., CVPR 2019)
-    """
+
+    # Reference: End-to-End Multi-Task Learning with Attention (Liu et al., CVPR 2019)
 
     def __init__(self, num_tasks: int = 3, temperature: float = 2.0) -> None:
         assert num_tasks == 3, "This implementation expects exactly 3 tasks (FIDI, CE, Semantic)."
@@ -375,9 +372,7 @@ class SpatialSemanticClustering(nn.Module):
         }
 
 class MultiScaleFeatureFusion(nn.Module):
-    """
-    Fixed multi-scale feature fusion with proper dimension handling.
-    """
+
     def __init__(self, feature_dims=None, output_dim=2048):
         super(MultiScaleFeatureFusion, self).__init__()
         
@@ -412,7 +407,6 @@ class MultiScaleFeatureFusion(nn.Module):
         
     def forward(self, multi_scale_features):
         """Fuse multi-scale features with proper error handling."""
-        # Fixed implementation for TorchScript compatibility
         # We know we have exactly 4 features: [x1, x2, x3, x4]
         if len(multi_scale_features) != 4:
             # Fallback for unexpected number of features
@@ -461,11 +455,6 @@ class MultiScaleFeatureFusion(nn.Module):
 
 class SimpleTrainer:
     """
-    Minimal trainer for SOLIDER with three losses:
-    - FIDI loss (metric)
-    - CE loss (ID classification)
-    - Semantic loss (spatial classification with pseudo-labels)
-
     Uses Dynamic Weight Averaging (DWA) so the three weights sum to 1.0.
     """
 
@@ -660,7 +649,6 @@ class SimpleTrainer:
 # In[1]:
 
 
-# CRITICAL FIX: Set matplotlib backend BEFORE any other imports
 import matplotlib
 matplotlib.use('Agg')  # Non-interactive backend
 import matplotlib.pyplot as plt
@@ -790,10 +778,7 @@ class PersonReIDTrainDataset(torch.utils.data.Dataset):
         
 
 class PersonReIDTestDataset(torch.utils.data.Dataset):
-    """
-    Dataset for query/gallery set: expects structure Dataset/query/*.jpg or Dataset/gallery/*.jpg
-    Returns (image, label, cam_id)
-    """
+
     def __init__(self, dir_path, transform=None):
         self.dir_path = dir_path
         self.transform = transform
@@ -834,15 +819,6 @@ from sklearn.cluster import KMeans
 import warnings
 warnings.filterwarnings('ignore')
 
-# Removed large SOLIDER-specific clustering block
-
-# Removed SemanticController (not needed for VisNet)
-
-# Removed SOLIDER-specific CNN block (not used in VisNet)
-
-# Removed MultiScaleFeatureFusion (VisNet uses plain ResNet-50 backbone)
-
-# Removed SOLIDER model (replaced by VisNet)
 
 def create_solider_model(num_classes: int) -> SOLIDERPersonReIDModel:
     """Factory function to create VisNet model."""
@@ -1318,7 +1294,6 @@ gallery_dataset = PersonReIDTestDataset(gallery_dir, transform=test_transform)
 
 num_classes = len(train_dataset.label_map)
 
-# PKSampler (error if not enough PIDs/images)
 pk_sampler = PKSampler(train_dataset, P=P, K=K)
 
 # Always use PK sampling
