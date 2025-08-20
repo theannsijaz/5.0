@@ -175,6 +175,7 @@ def load_jit_model(model_path, device='cuda'):
         return None, f"Error\n  Error: {str(e)}"
 
 def compare_models():
+    print("Starting model comparison...")
     # Use CUDA with optimizations
     device = 'cuda'
     torch.backends.cudnn.benchmark = True
@@ -328,22 +329,46 @@ def compare_models():
         results.append(row)
 
     # Write results to comparison.txt
-    with open('comparison.txt', 'w') as f:
-        header = "{:<20} {:<10} {:<15} {:<10} {:<10} {:<10} {:<10}\n".format(
-            "Model", "Size(MB)", "FLOPs", "Params", "Rank-1", "Rank-3", "mAP"
-        )
-        f.write(header)
-        f.write("="*90 + "\n")
-        for row in results:
-            f.write("{:<20} {:<10} {:<15} {:<10} {:<10} {:<10} {:<10}\n".format(
-                row.get('Model', 'N/A'),
-                row.get('Size(MB)', 'N/A'),
-                row.get('FLOPs', 'N/A'),
-                row.get('Params', 'N/A'),
-                row.get('Rank-1', 'N/A'),
-                row.get('Rank-3', 'N/A'),
-                row.get('mAP', 'N/A')
-            ))
+    print("\nWriting results to comparison.txt...")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Number of results: {len(results)}")
+    
+    try:
+        with open('comparison.txt', 'w') as f:
+            header = "{:<20} {:<10} {:<15} {:<10} {:<10} {:<10} {:<10}\n".format(
+                "Model", "Size(MB)", "FLOPs", "Params", "Rank-1", "Rank-3", "mAP"
+            )
+            f.write(header)
+            f.write("="*90 + "\n")
+            for row in results:
+                f.write("{:<20} {:<10} {:<15} {:<10} {:<10} {:<10} {:<10}\n".format(
+                    row.get('Model', 'N/A'),
+                    row.get('Size(MB)', 'N/A'),
+                    row.get('FLOPs', 'N/A'),
+                    row.get('Params', 'N/A'),
+                    row.get('Rank-1', 'N/A'),
+                    row.get('Rank-3', 'N/A'),
+                    row.get('mAP', 'N/A')
+                ))
+        print("Results successfully written to comparison.txt")
+    except Exception as e:
+        print(f"Error writing results file: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # Fallback: create a basic results file
+        try:
+            print("Creating fallback results file...")
+            with open('comparison_fallback.txt', 'w') as f:
+                f.write("Model comparison results (fallback)\n")
+                f.write("="*50 + "\n")
+                f.write(f"Script completed with {len(results)} models\n")
+                f.write(f"Working directory: {os.getcwd()}\n")
+                for row in results:
+                    f.write(f"{row.get('Model', 'N/A')}: {row}\n")
+            print("Fallback file created: comparison_fallback.txt")
+        except Exception as fallback_error:
+            print(f"Failed to create fallback file: {fallback_error}")
 
 if __name__ == "__main__":
     compare_models()
