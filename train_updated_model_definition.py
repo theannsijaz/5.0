@@ -1528,20 +1528,7 @@ if __name__ == "__main__":
         plt.savefig("training_plots/training_losses.png", dpi=150, bbox_inches='tight', facecolor='white')
         plt.close()
 
-        if ((epoch + 1) % 25 == 0) or ((epoch + 1) == num_epochs):
-            ckpt_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pth")
-            torch.save(
-                {
-                    'epoch': epoch + 1,
-                    'model_state_dict': trainer.model.state_dict(),
-                    'optimizer_state_dict': trainer.optimizer.state_dict(),
-                    'scheduler_state_dict': trainer.scheduler.state_dict(),
-                },
-                ckpt_path,
-            )
-            print(f"Saved checkpoint: {ckpt_path}")
-
-        # Evaluate every 10 epochs, update accuracy plot, and save JIT model
+        # Evaluate every 10 epochs, update accuracy plot
         if (epoch + 1) % 10 == 0:
             cmc, mAP = trainer.evaluate(query_loader, gallery_loader)
             r1 = float(cmc[0].item()) if cmc.numel() > 0 else 0.0
@@ -1567,35 +1554,51 @@ if __name__ == "__main__":
             plt.title('Validation Performance')
             plt.legend()
             plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig("training_plots/validation_accuracy.png", dpi=150, bbox_inches='tight', facecolor='white')
-        plt.close()
-        
-            # Save state dict (.pth) and TorchScript (.pt) at evaluation time
-        os.makedirs("weights", exist_ok=True)
-        pth_eval_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pth")
-        torch.save(
-            {
-                'epoch': epoch + 1,
-                'model_state_dict': trainer.model.state_dict(),
-                'optimizer_state_dict': trainer.optimizer.state_dict(),
-                'scheduler_state_dict': trainer.scheduler.state_dict(),
-            },
-            pth_eval_path,
-        )
-        print(f"Saved checkpoint: {pth_eval_path}")
+            plt.tight_layout()
+            plt.savefig("training_plots/validation_accuracy.png", dpi=150, bbox_inches='tight', facecolor='white')
+            plt.close()
 
-        # TorchScript export (inference-ready .pt)
-        model_to_save = trainer.model.module if hasattr(trainer.model, 'module') else trainer.model
-        model_to_save.eval()
-        example_input = torch.randn(1, 3, image_height, image_width, device=next(model_to_save.parameters()).device)
-        try:
-            traced = torch.jit.trace(model_to_save, example_input)
-            ts_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pt")
-            traced.save(ts_path)
-            print(f"Saved TorchScript model: {ts_path}")
-        except Exception as ex:
-            print(f"Warning: TorchScript export failed at epoch {epoch+1}: {ex}")
+        # Save all three types of model files every 15th epoch
+        if ((epoch + 1) % 15 == 0) or ((epoch + 1) == num_epochs):
+            os.makedirs("weights", exist_ok=True)
+            
+            # 1. Save .pth checkpoint file
+            pth_path = os.path.join("weights", f"visnet_epoch_{epoch+1}.pth")
+            torch.save(
+                {
+                    'epoch': epoch + 1,
+                    'model_state_dict': trainer.model.state_dict(),
+                    'optimizer_state_dict': trainer.optimizer.state_dict(),
+                    'scheduler_state_dict': trainer.scheduler.state_dict(),
+                },
+                pth_path,
+            )
+            print(f"Saved checkpoint: {pth_path}")
+
+            # 2. Save .pt state dict file
+            pt_path = os.path.join("weights", f"visnet_epoch_{epoch+1}_state.pt")
+            torch.save(
+                {
+                    'epoch': epoch + 1,
+                    'model_state_dict': trainer.model.state_dict(),
+                    'optimizer_state_dict': trainer.optimizer.state_dict(),
+                    'scheduler_state_dict': trainer.scheduler.state_dict(),
+                },
+                pt_path,
+            )
+            print(f"Saved state dict: {pt_path}")
+
+            # 3. Save TorchScript .pt file
+            model_to_save = trainer.model.module if hasattr(trainer.model, 'module') else trainer.model
+            model_to_save.eval()
+            example_input = torch.randn(1, 3, image_height, image_width, device=next(model_to_save.parameters()).device)
+            try:
+                traced = torch.jit.trace(model_to_save, example_input)
+                ts_path = os.path.join("weights", f"visnet_epoch_{epoch+1}_traced.pt")
+                traced.save(ts_path)
+                print(f"Saved TorchScript model: {ts_path}")
+            except Exception as ex:
+                print(f"Warning: TorchScript export failed at epoch {epoch+1}: {ex}")
         
         print("=" * 80)
     print("Training finished.")
