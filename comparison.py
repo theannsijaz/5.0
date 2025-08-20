@@ -19,7 +19,7 @@ from PIL import Image
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
-from torch.cuda.amp import autocast, GradScaler
+import torch.amp as amp  # Updated import for autocast
 import torch.backends.cudnn as cudnn
 
 # Enable CUDA optimizations
@@ -104,7 +104,7 @@ def extract_features(model, data_loader, device, use_amp=True):
     
     for batch_idx, (imgs, batch_pids, batch_camids) in enumerate(data_loader):
         imgs = imgs.to(device)
-        with autocast(enabled=use_amp):
+        with amp.autocast(device_type='cuda', enabled=use_amp):  # Updated autocast
             outputs = model(imgs)
             if isinstance(outputs, (tuple, list)):
                 outputs = outputs[0]
@@ -144,8 +144,8 @@ def evaluate_model(model, query_loader, gallery_loader, device='cuda'):
         else:
             distmat = -np.matmul(query_features, gallery_features.T)
         
-        # Evaluate
-        cmc, mAP, _ = metrics.evaluate_rank(
+        # Evaluate - now correctly handling the return values
+        cmc, mAP = metrics.evaluate_rank(
             distmat,
             np.array(query_pids),
             np.array(gallery_pids),
@@ -218,7 +218,7 @@ def compare_models():
         {
             'name': 'YourModel',
             'type': 'jit',
-            'path': '/Users/Shared/5.0/checkpoint_epoch_50.pt'
+            'path': 'checkpoint_epoch_50.pt'  # Updated to use relative path
         },
         {
             'name': 'osnet_x1_0',
