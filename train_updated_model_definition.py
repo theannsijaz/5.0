@@ -1543,6 +1543,8 @@ if __name__ == "__main__":
             rank5s.append(r5)
             maps.append(mAP)
 
+        # Update validation plot every epoch (if we have data)
+        if len(acc_epochs) > 0:
             os.makedirs("training_plots", exist_ok=True)
             plt.figure(figsize=(12, 6))
             plt.plot(acc_epochs, rank1s, label='Rank-1', marker='o')
